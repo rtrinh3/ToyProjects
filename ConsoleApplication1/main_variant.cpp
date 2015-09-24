@@ -32,6 +32,14 @@ namespace Variant_impl {
 		std::forward<Func>(func)(*(Arg*)arg);
 	}
 
+	template <class Func, class Arg, class Return, size_t I>
+	Return Invoke2(
+		Func&& func,
+		MaybeConstVoid<Arg>* arg)
+	{
+		return Return{ Pos<I>{}, std::forward<Func>(func)(*(Arg*)arg) };
+	}
+
 	// Helper. Destructs the given object.
 	struct Destruct {
 		template <class T>
@@ -92,8 +100,6 @@ namespace Variant_impl {
 		template <class To>
 		using type = std::is_convertible<From, To>;
 	};
-
-	struct InvalidTag {};
 };
 
 template <size_t I>
@@ -128,22 +134,17 @@ private:
 		// If it was invalid, we have nothing to destroy.
 	}
 
-	explicit Variant(Variant_impl::InvalidTag) {
-		// Do nothing, thus yielding an invalid Variant.
-	}
-
 	template <class Func, size_t... Is>
 	Variant<result_of_t<Func&&(Ts)>...>
 		Apply_impl(Func&& func, index_sequence<Is...>)
 	{
 		using ResultType = Variant<result_of_t<Func(Ts)>...>;
-		ResultType res(Variant_impl::InvalidTag{});
-		match(
-			[&](auto&& x) {
-				res.assign<Is>(std::forward<Func>(func)(x));
-			}... // We're unpacking a parameter pack into a pattern which happens to be a lambda (!)
-		);
-		return res;
+		using funcPtr = ResultType(*)(Func&&, void*);
+		funcPtr funcArray[] = {
+			Variant_impl::Invoke2<Func, Ts, ResultType, Is>...
+		};
+		return funcArray[index](std::forward<Func>(func), &storage);
+
 	}
 
 public:
@@ -160,22 +161,23 @@ public:
 
 	// Deductive constructor. Tries first to find the exact type, then a convertible type.
 	template <class T>
-	Variant(const T& val) {
+	Variant(T&& val) {
 		using namespace Variant_impl;
-		constexpr auto matchingType = FirstTrue<SameAs<T>::type, Ts...>::value;
-		constexpr auto convertibleType = FirstTrue<ConvertibleFrom<T>::type, Ts...>::value;
+		using ValueType = std::decay_t<T>;
+		constexpr auto matchingType = FirstTrue<SameAs<ValueType>::type, Ts...>::value;
+		constexpr auto convertibleType = FirstTrue<ConvertibleFrom<ValueType>::type, Ts...>::value;
 		constexpr auto finalIndex = matchingType < size ? matchingType : convertibleType;
 
 		static_assert(finalIndex < size, "Could neither find a matching type nor a convertible type");
-		new (&storage) TypeAt<finalIndex>(val);
+		new (&storage) TypeAt<finalIndex>(std::forward<T>(val));
 		index = finalIndex;
 	}
 
 	// Positional constructor
 	template <size_t I, class T>
-	Variant(Pos<I> tag, const T& val) {
+	Variant(Pos<I> tag, T&& val) {
 		static_assert(I < size, "Out of bounds");
-		new (&storage) TypeAt<I>(val);
+		new (&storage) TypeAt<I>(std::forward<T>(val));
 		index = I;
 	}
 
