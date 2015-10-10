@@ -21,6 +21,11 @@
   <ItemGroup>
     <ClCompile Include="main_variant.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BestFit.hpp" />
+    <ClInclude Include="Variant.hpp" />
+    <ClInclude Include="Variant_impl.hpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3703D36F-C109-4D07-B7D8-F0BBB3FE1AEB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
