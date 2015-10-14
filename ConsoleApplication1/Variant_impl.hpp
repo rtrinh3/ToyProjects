@@ -14,10 +14,10 @@ namespace Variant_impl {
 	}
 
 	// If I try to write Apply_Invoker as a function, I can't make constexpr the array in Apply_impl :[
-	template <class Func, class Arg, class Return, size_t I>
+	template <class Func, class Arg, class Return>
 	struct Apply_Invoker {
 		static Return go(Func&& func, MaybeConstVoid<Arg>* arg) {
-			return Return{ Pos<I>{}, std::forward<Func>(func)(*(Arg*)arg) };
+			return std::forward<Func>(func)(*(Arg*)arg);
 		}
 	};
 
@@ -214,23 +214,13 @@ void Variant<Ts...>::call(Fun&& fun) const {
 
 template <class... Ts>
 template <class Func>
-Variant<std::result_of_t<Func && (Ts)>...>
-Variant<Ts...>::Apply(Func&& func)
+std::common_type_t<std::result_of_t<Func && (Ts)>...>
+Variant<Ts...>::apply(Func&& func) const
 {
-	return Apply_impl(
-		std::forward<Func>(func),
-		index_sequence_for <Ts...>{});
-}
-
-template <class... Ts>
-template <class Func, size_t... Is>
-Variant<std::result_of_t<Func && (Ts)>...>
-Variant<Ts...>::Apply_impl(Func&& func, std::index_sequence<Is...>)
-{
-	using ResultType = Variant<result_of_t<Func(Ts)>...>;
-	using funcPtr = ResultType(*)(Func&&, void*);
+	using ResultType = std::common_type_t<std::result_of_t<Func && (Ts)>...>;
+	using funcPtr = ResultType(*)(Func&&, const void*);
 	static constexpr funcPtr funcArray[] = {
-		&Variant_impl::Apply_Invoker<Func, Ts, ResultType, Is>::go...
+		&Variant_impl::Apply_Invoker<Func, const Ts, ResultType>::go...
 	};
 	return funcArray[index](std::forward<Func>(func), &storage);
 }

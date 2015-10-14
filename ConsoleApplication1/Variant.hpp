@@ -64,9 +64,10 @@ public:
 	template <class Fun>
 	void call(Fun&& fun) const;
 
+	// Takes one functor. Calls the functor with the actual type of the variant, and returns the result.
 	template <class Func>
-	Variant<std::result_of_t<Func && (Ts)>...>
-		Apply(Func&& func);
+	std::common_type_t<std::result_of_t<Func&&(Ts)>...>
+		apply(Func&& func) const;
 private:
 	// Static definitions
 	constexpr static size_t size = sizeof...(Ts);
@@ -80,10 +81,6 @@ private:
 	bool valid() const;
 
 	void destroySelf();
-
-	template <class Func, size_t... Is>
-	Variant<std::result_of_t<Func && (Ts)>...>
-		Apply_impl(Func&& func, std::index_sequence<Is...>);
 };
 
 #include "Variant_impl.hpp"
