@@ -18,14 +18,37 @@ struct Sqrt {
 	}
 };
 
+template <typename To, typename From>
+To convert(const void* p) {
+	return *(const From*)p;
+}
+
+template <typename... Ts>
+std::common_type_t<Ts...>
+coalesce(const Variant<Ts...>& var)
+{
+	using Res = std::common_type_t<Ts...>;
+	using ConvertPtr = Res(*)(const void*);
+	static constexpr ConvertPtr conversion[] = {
+		convert<Res, Ts>...
+	};
+	return conversion[var.getIndex()](&var);
+}
+
 int main() {
 	Variant<int, string> mything("Hello");
 	mything.call(Print{});
 
-	Variant<float, double, long double> myotherthing(Pos<2>{}, 10);
+	Variant<float, double> myotherthing(Pos<0>{}, 10.0f);
 	auto what = myotherthing.Apply(Sqrt{});
-	what.call(Print{});
+	auto wut = coalesce(what);
+	cout << wut << "\n";
 
 	const Variant<string, int> whatWillThisBe;
-	whatWillThisBe.call(Print{}); //int
+	whatWillThisBe.match(
+		[](const string& s) 
+			{ cout << "I got a string: [" << s << "]\n"; },
+		[](int x) 
+			{ cout << "I got an int: " << x << "\n"; }
+	);
 }
