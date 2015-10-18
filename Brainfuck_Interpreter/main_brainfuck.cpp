@@ -6,12 +6,14 @@
 #include <stack>
 #include <cstdint>
 #include <stdexcept>
-#include <algorithm>
+#include <iostream>
+#include <fstream>
+#include <iterator>
 
-template <typename Cell>
+template <typename Cell, size_t hint = 1>
 class DequeMemoryPolicy {
 private:
-	std::deque<Cell> Memory{ 0 };
+	std::deque<Cell> Memory = std::deque<Cell>(hint);
 	size_t MemoryPointer = 0;
 protected:
 	Cell& CurrentCell() {
@@ -33,10 +35,10 @@ public:
 	}
 };
 
-template <typename Cell>
+template <typename Cell, size_t hint = 1>
 class VectorMemoryPolicy {
 private:
-	std::vector<Cell> Memory{ 0 };
+	std::vector<Cell> Memory = std::vector<Cell>(hint);
 	size_t MemoryPointer = 0;
 protected:
 	Cell& CurrentCell() {
@@ -51,16 +53,17 @@ public:
 	}
 	void Left() {
 		if (0 == MemoryPointer) {
-			throw std::runtime_error("Can't move the pointer left");
+			Memory.insert(Memory.cbegin(), 0); // Rarely used but oh so ugly
+		} else {
+			--MemoryPointer;
 		}
-		--MemoryPointer;
 	}
 };
 
-template <typename Cell>
+template <typename Cell, size_t hint = 1>
 class ListMemoryPolicy {
 private:
-	std::list<Cell> Memory{ 0 };
+	std::list<Cell> Memory = std::list<Cell>(hint);
 	typename std::list<Cell>::iterator MemoryPointer = Memory.begin();
 protected:
 	Cell& CurrentCell() {
@@ -124,7 +127,7 @@ public:
 	}
 };
 
-template <typename Cell>
+template <typename Cell, size_t Dummy = 0>
 class MapMemoryPolicy {
 private:
 	std::unordered_map<int, Cell> Memory;
@@ -142,7 +145,12 @@ public:
 	}
 };
 
-class BrainfuckProgram : public ListMemoryPolicy<int8_t> {
+struct CStringSentinel {};
+bool operator!=(const char *s, CStringSentinel dummy) {
+	return 0 != *s;
+}
+
+class BrainfuckProgram : public VectorMemoryPolicy<int8_t, 0xffff> {
 private:
 	// Results of parsing
 	using Instruction = void(BrainfuckProgram::*)();
@@ -179,10 +187,11 @@ private:
 		}
 	}
 public:
-	BrainfuckProgram(const char* source) {
+	template <class InputCharIterator, class Sentinel>
+	BrainfuckProgram(InputCharIterator first, Sentinel last) {
 		std::stack<size_t, std::vector<size_t> > OpeningBrackets;
-		for (auto p = source; *p; ++p) {
-			const char c = *p;
+		for (size_t index = 0U; first != last; ++index, ++first) {
+			const char c = *first;
 			switch (c) {
 			case '>':
 				Program.push_back(&BrainfuckProgram::Right);
@@ -211,7 +220,7 @@ public:
 				auto MatchingEnd = Program.size();
 				if (OpeningBrackets.empty()) {
 					char msg[40];
-					snprintf(msg, 40, "Error: Unmatched ] at %u", p - source);
+					snprintf(msg, 40, "Error: Unmatched ] at %zu", index);
 					throw std::runtime_error(msg);
 				}
 				auto MatchingStart = OpeningBrackets.top();
@@ -228,10 +237,15 @@ public:
 		}
 		if (!OpeningBrackets.empty()) {
 			char msg[40];
-			snprintf(msg, 40, "Error: %u unmatched '['(s)", OpeningBrackets.size());
+			snprintf(msg, 40, "Error: %zu unmatched '['(s)", OpeningBrackets.size());
 			throw std::runtime_error(msg);
 		}
 	}
+	BrainfuckProgram(const char* source) :
+		BrainfuckProgram(source, CStringSentinel{})
+	{
+	}
+
 	void Run() {
 		const auto length = Program.size();
 		while (ProgramCounter < length) {
@@ -241,9 +255,8 @@ public:
 	}
 };
 
-int main() {
-	try {
-		BrainfuckProgram helloWorld(R"==(
+namespace sources {
+	const char mandelbrot[] = R"==(
       A mandelbrot set fractal viewer in brainf*** written by Erik Bosman
 +++++++++++++[->++>>>+++++>++>+<<<<<<]>>>>>++++++>--->>>>>>>>>>+++++++++++++++[[
 >>>>>>>>>]+[<<<<<<<<<]>>>>>>>>>-]+[>>>>>>>>[-]>]<<<<<<<<<[<<<<<<<<<]>>>>>>>>[-]+
@@ -390,10 +403,20 @@ int main() {
 +[-[->>>>>>>>>+<<<<<<<<<]>>>>>>>>>]>>>>>->>>>>>>>>>>>>>>>>>>>>>>>>>>-<<<<<<[<<<<
 <<<<<]]>>>]
 
-)==");
-		helloWorld.Run();
-	}
-	catch (std::exception& ex) {
-		fprintf(stderr, "%s\n", ex.what());
-	}
+)==";
+}
+
+int main(int argc, char** argv) {
+	BrainfuckProgram bf = ([&]() -> BrainfuckProgram {
+		if (argc > 1) {
+			using it = std::istreambuf_iterator<char>;
+			std::ifstream f(argv[1]);
+			return BrainfuckProgram(it(f), it{});
+		} else {
+			puts("Running demo: Mandelbrot");
+			return BrainfuckProgram(sources::mandelbrot);
+		}
+	})();
+	bf.Run();
+	puts("Finish!\n");
 }
