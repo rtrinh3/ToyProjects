@@ -2,6 +2,7 @@
 #include <string>
 #include <typeinfo>
 #include "Variant.hpp"
+#include <cmath>
 using namespace std;
 
 struct Print {
@@ -33,4 +34,7 @@ int main() {
 		[](int x) 
 			{ cout << "I got an int: " << x << "\n"; }
 	);
+	
+	// Failures
+	//Variant<int, string> widething(L"Hello");
 }

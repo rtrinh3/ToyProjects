@@ -60,31 +60,22 @@ namespace Variant_impl {
 		}
 	};
 
-	template <template<class> class Pred, class... List>
+	template <bool... bs>
 	struct FirstTrue;
-
-	template <template<class> class Pred, class Head, class... Tail>
-	struct FirstTrue<Pred, Head, Tail...> {
-		static constexpr size_t value = Pred<Head>::value
-			? 0U
-			: 1U + FirstTrue<Pred, Tail...>::value;
+	
+	template <bool... Tail>
+	struct FirstTrue<false, Tail...> {
+		static constexpr size_t value = 1U + FirstTrue<Tail...>::value;
 	};
-
-	template <template<class> class Pred>
-	struct FirstTrue<Pred> {
+	
+	template <bool... Tail>
+	struct FirstTrue<true, Tail...> {
 		static constexpr size_t value = 0U;
 	};
-
-	template <class T>
-	struct SameAs {
-		template <class U>
-		using type = std::is_same<T, U>;
-	};
-
-	template <class From>
-	struct ConvertibleFrom {
-		template <class To>
-		using type = std::is_convertible<From, To>;
+	
+	template <>
+	struct FirstTrue<> {
+		static constexpr size_t value = 0U;
 	};
 };
 
@@ -105,8 +96,9 @@ void Variant<Ts...>::destroySelf() {
 // Default constructor. Tries first to find a trivially constructible type, then a default constructible type.
 template <class... Ts>
 Variant<Ts...>::Variant() {
-	constexpr auto firstTrivialDefault = Variant_impl::FirstTrue<std::is_trivially_default_constructible, Ts...>::value;
-	constexpr auto firstDefault = Variant_impl::FirstTrue<std::is_default_constructible, Ts...>::value;
+	using namespace Variant_impl;
+	constexpr auto firstTrivialDefault = FirstTrue<std::is_trivially_default_constructible<Ts>::value...>::value;
+	constexpr auto firstDefault = FirstTrue<std::is_default_constructible<Ts>::value...>::value;
 	constexpr auto finalIndex = firstTrivialDefault < size ? firstTrivialDefault : firstDefault;
 
 	static_assert(finalIndex < size, "To default construct, you must have a default constructible type");
@@ -120,8 +112,8 @@ template <class T>
 Variant<Ts...>::Variant(T&& val) {
 	using namespace Variant_impl;
 	using ValueType = std::decay_t<T>;
-	constexpr auto matchingType = FirstTrue<SameAs<ValueType>::type, Ts...>::value;
-	constexpr auto convertibleType = FirstTrue<ConvertibleFrom<ValueType>::type, Ts...>::value;
+	constexpr auto matchingType = FirstTrue<std::is_same<ValueType, Ts>::value...>::value;
+	constexpr auto convertibleType = FirstTrue<std::is_convertible<ValueType, Ts>::value...>::value;
 	constexpr auto finalIndex = matchingType < size ? matchingType : convertibleType;
 
 	static_assert(finalIndex < size, "Could neither find a matching type nor a convertible type");
@@ -141,8 +133,8 @@ Variant<Ts...>::Variant(Pos<I> tag, T&& val) {
 // This factory might be easier to use than the positional constructor.
 template <class... Ts>
 template <size_t I>
-static Variant<Ts...>
-Variant<Ts...>::construct(const typename Variant<Ts...>::TypeAt<I>& item)
+Variant<Ts...>
+Variant<Ts...>::construct(const typename Variant<Ts...>::template TypeAt<I>& item)
 {
 	return Variant(Pos<I>{}, item);
 }
@@ -150,11 +142,11 @@ Variant<Ts...>::construct(const typename Variant<Ts...>::TypeAt<I>& item)
 // Direct access
 template <class... Ts>
 template <size_t I>
-typename Variant<Ts...>::TypeAt<I>&
+typename Variant<Ts...>::template TypeAt<I>&
 Variant<Ts...>::get()
 {
 	if (index != I) {
-		throw runtime_error("Wrong type");
+		throw std::runtime_error("Wrong type");
 	}
 	return (TypeAt<I>&)storage;
 }
@@ -171,7 +163,7 @@ void Variant<Ts...>::match(Funcs&&... funcs) {
 	static_assert(sizeof...(Funcs) == size,
 		"Need as many functions as possible types.");
 	void* funcPtrs[] = { &funcs... };
-	using InvokerPtr = void(*)(void*, VoidPtr);
+	using InvokerPtr = void(*)(void*, void*);
 	static constexpr InvokerPtr invokers[] = {
 		&Variant_impl::Match_Invoker<Funcs, Ts>...
 	};
@@ -249,7 +241,7 @@ Variant<Ts...>::Variant(Variant<Ts...>&& other) {
 template <class... Ts>
 template <size_t I>
 Variant<Ts...>&
-Variant<Ts...>::assign(const typename Variant<Ts...>::TypeAt<I>& item)
+Variant<Ts...>::assign(const typename Variant<Ts...>::template TypeAt<I>& item)
 {
 	if (I == index) {
 		get<I>() = item;
