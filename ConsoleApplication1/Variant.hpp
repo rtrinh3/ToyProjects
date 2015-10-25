@@ -37,11 +37,22 @@ public:
 
 	// This factory might be easier to use than the positional constructor.
 	template <size_t I>
-	static Variant construct(const TypeAt<I>& item);
+	static Variant construct(const TypeAt<I>& item) {
+		return Variant(Pos<I>{}, item);
+	}
 
 	// Positional assignment
 	template <size_t I>
-	Variant& assign(const TypeAt<I>& item);
+	Variant& assign(const TypeAt<I>& item) {
+		if (I == index) {
+			get<I>() = item;
+		} else {
+			destroySelf();
+			new (&storage) TypeAt<I>(item);
+			index = I;
+		}
+		return *this;
+	}
 
 	// Copy assignment
 	Variant& operator=(const Variant& rhs);

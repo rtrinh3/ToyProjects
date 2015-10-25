@@ -130,15 +130,6 @@ Variant<Ts...>::Variant(Pos<I> tag, T&& val) {
 	index = I;
 }
 
-// This factory might be easier to use than the positional constructor.
-template <class... Ts>
-template <size_t I>
-Variant<Ts...>
-Variant<Ts...>::construct(const typename Variant<Ts...>::template TypeAt<I>& item)
-{
-	return Variant(Pos<I>{}, item);
-}
-
 // Direct access
 template <class... Ts>
 template <size_t I>
@@ -235,22 +226,6 @@ template <class... Ts>
 Variant<Ts...>::Variant(Variant<Ts...>&& other) {
 	other.call(Variant_impl::Move(&storage));
 	index = other.index;
-}
-
-// Positional assignment
-template <class... Ts>
-template <size_t I>
-Variant<Ts...>&
-Variant<Ts...>::assign(const typename Variant<Ts...>::template TypeAt<I>& item)
-{
-	if (I == index) {
-		get<I>() = item;
-	} else {
-		destroySelf();
-		new (&storage) TypeAt<I>(item);
-		index = I;
-	}
-	return *this;
 }
 
 // Copy assignment
