@@ -130,6 +130,21 @@ Variant<Ts...>::Variant(Pos<I> tag, T&& val) {
 	index = I;
 }
 
+
+// Positional assignment
+template<class ...Ts>
+template<size_t I>
+void Variant<Ts...>::assign(const TypeAt<I>& item) {
+	if (I == index) {
+		get<I>() = item;
+	} else {
+		destroySelf();
+		new (&storage) TypeAt<I>(item);
+		index = I;
+	}
+	return *this;
+}
+
 // Direct access
 template <class... Ts>
 template <size_t I>

@@ -44,16 +44,7 @@ public:
 
 	// Positional assignment
 	template <size_t I>
-	Variant& assign(const TypeAt<I>& item) {
-		if (I == this->index) {
-			this->template get<I>() = item;
-		} else {
-			this->destroySelf();
-			new (&storage) TypeAt<I>(item);
-			this->index = I;
-		}
-		return *this;
-	}
+	void assign(const TypeAt<I>& item);
 
 	// Copy assignment
 	Variant& operator=(const Variant& rhs);
