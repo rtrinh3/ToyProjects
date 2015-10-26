@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <type_traits>
+#include "BestFit.h"
 
 using std::size_t;
 
@@ -44,12 +45,12 @@ public:
 	// Positional assignment
 	template <size_t I>
 	Variant& assign(const TypeAt<I>& item) {
-		if (I == index) {
-			get<I>() = item;
+		if (I == this->index) {
+			this->template get<I>() = item;
 		} else {
-			destroySelf();
+			this->destroySelf();
 			new (&storage) TypeAt<I>(item);
-			index = I;
+			this->index = I;
 		}
 		return *this;
 	}
@@ -82,12 +83,12 @@ public:
 private:
 	// Static definitions
 	constexpr static size_t size = sizeof...(Ts);
-	constexpr static size_t INVALID = size;
-	// A valid index would be in [0, size[
+	constexpr static size_t INVALID = size; // A valid index would be in [0, size[
+	using IndexType = typename BestFit<size>::type;
 	
 	// Member variables
-	typename std::aligned_union<1, Ts...>::type storage;
-	size_t index = INVALID;
+	typename std::aligned_union<0, Ts...>::type storage;
+	IndexType index = INVALID;
 
 	bool valid() const;
 

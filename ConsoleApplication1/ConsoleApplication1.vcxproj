@@ -22,6 +22,7 @@
     <ClCompile Include="main_variant.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BestFit.h" />
     <ClInclude Include="Variant.hpp" />
     <ClInclude Include="Variant_impl.hpp" />
   </ItemGroup>

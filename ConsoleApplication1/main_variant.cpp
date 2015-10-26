@@ -19,6 +19,8 @@ struct Sqrt {
 	}
 };
 
+using MyEnum = Variant<Print, Sqrt>;
+
 int main() {
 	Variant<int, string> mything("Hello");
 	mything.call(Print{});
@@ -33,6 +35,13 @@ int main() {
 			{ cout << "I got a string: [" << s << "]\n"; },
 		[](int x) 
 			{ cout << "I got an int: " << x << "\n"; }
+	);
+
+	MyEnum rust_style;
+	cout << "Rust-style enum: " << sizeof(rust_style) << endl;
+	rust_style.match(
+		[](Print) { cout << "Print\n"; },
+		[](Sqrt) { cout << "Sqrt :)\n"; }
 	);
 	
 	// Failures
