@@ -150,13 +150,20 @@ bool operator!=(const char *s, CStringSentinel dummy) {
 	return 0 != *s;
 }
 
-class BrainfuckProgram : public VectorMemoryPolicy<int8_t, 0xffff> {
+class BrainfuckProgram : public UnsafeArrayMemoryPolicy<int8_t, 0xffff> {
 private:
 	// Results of parsing
-	using Instruction = void(BrainfuckProgram::*)();
+	using OpCode = void(BrainfuckProgram::*)();
+	struct Instruction {
+		OpCode op;
+		size_t jumpTarget;
+		Instruction() = default;
+		Instruction(OpCode o)
+			: op(o)
+		{
+		}
+	};
 	std::vector<Instruction> Program;
-	std::unordered_map<size_t, size_t> ForwardJumps;
-	std::unordered_map<size_t, size_t> BackwardJumps;
 	// Runtime state
 	size_t ProgramCounter = 0;
 	// Implementation of instructions
@@ -178,12 +185,12 @@ private:
 	}
 	void StartLoop() {
 		if (0 == CurrentCell()) {
-			ProgramCounter = ForwardJumps.at(ProgramCounter);
+			ProgramCounter = Program[ProgramCounter].jumpTarget;
 		}
 	}
 	void EndLoop() {
 		if (0 != CurrentCell()) {
-			ProgramCounter = BackwardJumps.at(ProgramCounter);
+			ProgramCounter = Program[ProgramCounter].jumpTarget;
 		}
 	}
 public:
@@ -225,9 +232,9 @@ public:
 				}
 				auto MatchingStart = OpeningBrackets.top();
 				OpeningBrackets.pop();
-				BackwardJumps.emplace(MatchingEnd, MatchingStart);
-				ForwardJumps.emplace(MatchingStart, MatchingEnd);
 				Program.push_back(&BrainfuckProgram::EndLoop);
+				Program[MatchingEnd].jumpTarget = MatchingStart;
+				Program[MatchingStart].jumpTarget = MatchingEnd;
 			}
 			break;
 			default:
@@ -249,7 +256,7 @@ public:
 	void Run() {
 		const auto length = Program.size();
 		while (ProgramCounter < length) {
-			(this->*Program[ProgramCounter])();
+			(this->*Program[ProgramCounter].op)();
 			++ProgramCounter;
 		}
 	}
