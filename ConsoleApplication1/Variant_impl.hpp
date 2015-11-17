@@ -13,6 +13,11 @@ namespace Variant_impl {
 		std::forward<Func>(func)(*(Arg*)arg);
 	}
 
+	template <class Func, class Arg>
+	void Invalid_Call_Invoker(Func&&, Arg*) {
+		throw std::runtime_error("Invalid index");
+	}
+
 	// If I try to write Apply_Invoker as a function, I can't make constexpr the array in Apply_impl :[
 	template <class Func, class Arg, class Return>
 	struct Apply_Invoker {
@@ -21,9 +26,22 @@ namespace Variant_impl {
 		}
 	};
 
+	template <class Func, class Arg, class Return>
+	Return Invalid_Apply_Invoker(Func&&, Arg*) {
+		throw std::runtime_error("Invalid index");
+	}
+
 	template <typename Fun, typename Arg>
 	void Match_Invoker(void* fun, MaybeConstVoid<Arg>* arg) {
 		(*(Fun*)fun)(*(Arg*)arg);
+	}
+
+	void Invalid_Match_Invoker(void* fun, void*) {
+		throw std::runtime_error("Invalid index");
+	}
+
+	void Invalid_Match_Invoker_Const(void* fun, const void*) {
+		throw std::runtime_error("Invalid index");
 	}
 
 	// Helper. Destructs the given object.
@@ -61,21 +79,13 @@ namespace Variant_impl {
 	};
 
 	template <bool... bs>
-	struct FirstTrue;
+	struct FirstTrue {
+		static constexpr size_t value = 0U;
+	};
 	
 	template <bool... Tail>
 	struct FirstTrue<false, Tail...> {
 		static constexpr size_t value = 1U + FirstTrue<Tail...>::value;
-	};
-	
-	template <bool... Tail>
-	struct FirstTrue<true, Tail...> {
-		static constexpr size_t value = 0U;
-	};
-	
-	template <>
-	struct FirstTrue<> {
-		static constexpr size_t value = 0U;
 	};
 };
 
@@ -171,7 +181,8 @@ void Variant<Ts...>::match(Funcs&&... funcs) {
 	void* funcPtrs[] = { &funcs... };
 	using InvokerPtr = void(*)(void*, void*);
 	static constexpr InvokerPtr invokers[] = {
-		&Variant_impl::Match_Invoker<Funcs, Ts>...
+		Variant_impl::Match_Invoker<Funcs, Ts>... ,
+		Variant_impl::Invalid_Match_Invoker
 	};
 	invokers[index](funcPtrs[index], &storage);
 }
@@ -184,7 +195,8 @@ void Variant<Ts...>::match(Funcs&&... funcs) const {
 	void* funcPtrs[] = { &funcs... };
 	using InvokerPtr = void(*)(void*, const void*);
 	static constexpr InvokerPtr invokers[] = {
-		&Variant_impl::Match_Invoker<Funcs, const Ts>...
+		Variant_impl::Match_Invoker<Funcs, const Ts>... ,
+		Variant_impl::Invalid_Match_Invoker_Const
 	};
 	invokers[index](funcPtrs[index], &storage);
 }
@@ -195,7 +207,8 @@ template <class Fun>
 void Variant<Ts...>::call(Fun&& fun) {
 	using funcPtr = void(*)(Fun&&, void*);
 	static constexpr funcPtr funcArray[] = {
-		&Variant_impl::Call_Invoker<Fun, Ts>...
+		&Variant_impl::Call_Invoker<Fun, Ts>... ,
+		&Variant_impl::Invalid_Call_Invoker<Fun, void>
 	};
 	funcArray[index](std::forward<Fun>(fun), &storage);
 }
@@ -205,7 +218,8 @@ template <class Fun>
 void Variant<Ts...>::call(Fun&& fun) const {
 	using funcPtr = void(*)(Fun&&, const void*);
 	static constexpr funcPtr funcArray[] = {
-		&Variant_impl::Call_Invoker<Fun, const Ts>...
+		&Variant_impl::Call_Invoker<Fun, const Ts>... ,
+		&Variant_impl::Invalid_Call_Invoker<Fun, const void>
 	};
 	funcArray[index](std::forward<Fun>(fun), &storage);
 }
@@ -218,7 +232,8 @@ Variant<Ts...>::apply(Func&& func) const
 	using ResultType = std::common_type_t<std::result_of_t<Func && (Ts)>...>;
 	using funcPtr = ResultType(*)(Func&&, const void*);
 	static constexpr funcPtr funcArray[] = {
-		&Variant_impl::Apply_Invoker<Func, const Ts, ResultType>::go...
+		&Variant_impl::Apply_Invoker<Func, const Ts, ResultType>::go... ,
+		&Variant_impl::Invalid_Apply_Invoker<Func, const void, ResultType>
 	};
 	return funcArray[index](std::forward<Func>(func), &storage);
 }
