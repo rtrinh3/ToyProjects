@@ -33,7 +33,7 @@ namespace Variant_impl {
 
 	template <typename Fun, typename Arg>
 	void Match_Invoker(void* fun, MaybeConstVoid<Arg>* arg) {
-		(*(Fun*)fun)(*(Arg*)arg);
+		((Fun&&)*(std::remove_reference_t<Fun>*)fun)(*(Arg*)arg);
 	}
 
 	void Invalid_Match_Invoker(void* fun, void*) {
@@ -192,7 +192,7 @@ template <class... Funcs>
 void Variant<Ts...>::match(Funcs&&... funcs) const {
 	static_assert(sizeof...(Funcs) == size,
 		"Need as many functions as possible types.");
-	void* funcPtrs[] = { &funcs... };
+	void* funcPtrs[] = { (void*)&funcs... };
 	using InvokerPtr = void(*)(void*, const void*);
 	static constexpr InvokerPtr invokers[] = {
 		Variant_impl::Match_Invoker<Funcs, const Ts>... ,
@@ -226,10 +226,10 @@ void Variant<Ts...>::call(Fun&& fun) const {
 
 template <class... Ts>
 template <class Func>
-std::common_type_t<std::result_of_t<Func && (Ts)>...>
+std::common_type_t<std::result_of_t<Func&&(Ts)>...>
 Variant<Ts...>::apply(Func&& func) const
 {
-	using ResultType = std::common_type_t<std::result_of_t<Func && (Ts)>...>;
+	using ResultType = std::common_type_t<std::result_of_t<Func&&(Ts)>...>;
 	using funcPtr = ResultType(*)(Func&&, const void*);
 	static constexpr funcPtr funcArray[] = {
 		&Variant_impl::Apply_Invoker<Func, const Ts, ResultType>::go... ,
