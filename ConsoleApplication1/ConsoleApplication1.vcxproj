@@ -23,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BestFit.h" />
+    <ClInclude Include="Result.hpp" />
     <ClInclude Include="Variant.hpp" />
     <ClInclude Include="Variant_impl.hpp" />
   </ItemGroup>
