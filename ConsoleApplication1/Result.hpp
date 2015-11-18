@@ -31,17 +31,14 @@ public:
 		Map(Fun&& func) const&
 	{
 		typedef Result<std::result_of_t<Fun&&(const T&)> > Return;
-		Optional<Return> res;
+		Optional<Return> res; // Using Optional because we can't default construct a Result.
 		contents.match(
 			[&](std::exception_ptr e) { res.assign<1>(Return::build_err(e)); },
 			[&](const T& x) {
-			try {
-				res.assign<1>(Return::build_ok(std::forward<Fun>(func)(x)));
+				res.assign<1>(
+					Attempt(
+						[&] {return std::forward<Fun>(func)(x); }));
 			}
-			catch (...) {
-				res.assign<1>(Return::build_err(std::current_exception()));
-			}
-		}
 		);
 		// Our res shouldn't be Empty at this point...
 		return res.get<1>();
@@ -56,13 +53,10 @@ public:
 		contents.match(
 			[&](std::exception_ptr e) { res.assign<1>(Return::build_err(e)); },
 			[&](const T& x) {
-			try {
-				res.assign<1>(Return::build_ok(std::forward<Fun>(func)(std::move(x))));
+				res.assign<1>(
+					Attempt(
+						[&] {return std::forward<Fun>(func)(std::move(x)); }));
 			}
-			catch (...) {
-				res.assign<1>(Return::build_err(std::current_exception()));
-			}
-		}
 		);
 		// Our res shouldn't be Empty at this point...
 		return res.get<1>();
@@ -79,13 +73,7 @@ public:
 	}
 
 	T Unwrap() && {
-		T* res = nullptr;
-		contents.match(
-			[&](std::exception_ptr e) { std::rethrow_exception(e); },
-			[&](const T& x) { res = std::addressof(x); }
-		);
-		// If we made it here, res is no longer nullptr.
-		return std::move(*res);
+		return std::move(const_cast<const Result*>(this)->Unwrap());
 	}
 };
 
@@ -96,8 +84,7 @@ Attempt(Fun&& func)
 	using Return = Result<std::result_of_t<Fun&&()> >;
 	try {
 		return Return::build_ok(std::forward<Fun>(func)());
-	}
-	catch (...) {
+	} catch (...) {
 		return Return::build_err(std::current_exception());
 	}
 }
