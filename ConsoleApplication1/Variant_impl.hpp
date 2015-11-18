@@ -15,7 +15,7 @@ namespace Variant_impl {
 
 	template <class Func, class Arg>
 	void Invalid_Call_Invoker(Func&&, Arg*) {
-		throw std::runtime_error("Invalid index");
+		throw InvalidVariantException{};
 	}
 
 	// If I try to write Apply_Invoker as a function, I can't make constexpr the array in Apply_impl :[
@@ -28,7 +28,7 @@ namespace Variant_impl {
 
 	template <class Func, class Arg, class Return>
 	Return Invalid_Apply_Invoker(Func&&, Arg*) {
-		throw std::runtime_error("Invalid index");
+		throw InvalidVariantException{};
 	}
 
 	template <typename Fun, typename Arg>
@@ -37,11 +37,11 @@ namespace Variant_impl {
 	}
 
 	void Invalid_Match_Invoker(void* fun, void*) {
-		throw std::runtime_error("Invalid index");
+		throw InvalidVariantException{};
 	}
 
 	void Invalid_Match_Invoker_Const(void* fun, const void*) {
-		throw std::runtime_error("Invalid index");
+		throw InvalidVariantException{};
 	}
 
 	// Helper. Destructs the given object.
@@ -162,7 +162,7 @@ typename Variant<Ts...>::template TypeAt<I>&
 Variant<Ts...>::get()
 {
 	if (index != I) {
-		throw std::runtime_error("Wrong type");
+		throw WrongIndexException(I, index);
 	}
 	return (TypeAt<I>&)storage;
 }

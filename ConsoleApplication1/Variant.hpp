@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <type_traits>
+#include <exception>
 #include "BestFit.h"
 
 using std::size_t;
@@ -84,6 +85,25 @@ private:
 	bool valid() const;
 
 	void destroySelf();
+};
+
+struct WrongIndexException : public virtual std::exception {
+	size_t expected, actual;
+	char buffer[40];
+	WrongIndexException(size_t expected, size_t actual) :
+		expected(expected), actual(actual)
+	{
+		sprintf_s(buffer, "Expected index %zu, got %zu.", expected, actual);
+	}
+	virtual const char* what() const override {
+		return buffer;
+	}
+};
+
+struct InvalidVariantException : public virtual std::exception {
+	virtual const char* what() const override {
+		return "The Variant is in an invalid state.";
+	}
 };
 
 #include "Variant_impl.hpp"
