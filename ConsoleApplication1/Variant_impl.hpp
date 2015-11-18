@@ -133,10 +133,10 @@ Variant<Ts...>::Variant(T&& val) {
 
 // Positional constructor
 template <class... Ts>
-template <size_t I, class T>
-Variant<Ts...>::Variant(Pos<I> tag, T&& val) {
+template <size_t I>
+Variant<Ts...>::Variant(Pos<I> tag, TypeAt<I> val) {
 	static_assert(I < size, "Out of bounds");
-	new (&storage) TypeAt<I>(std::forward<T>(val));
+	new (&storage) TypeAt<I>(std::move(val));
 	index = I;
 }
 

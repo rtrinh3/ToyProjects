@@ -34,13 +34,13 @@ public:
 	Variant(T&& val);
 
 	// Positional constructor
-	template <size_t I, class T>
-	Variant(Pos<I> tag, T&& val);
+	template <size_t I>
+	Variant(Pos<I> tag, TypeAt<I> val);
 
 	// This factory might be easier to use than the positional constructor.
 	template <size_t I>
-	static Variant construct(const TypeAt<I>& item) {
-		return Variant(Pos<I>{}, item);
+	static Variant construct(TypeAt<I> item) {
+		return Variant(Pos<I>{}, std::move(item));
 	}
 
 	// Positional assignment
