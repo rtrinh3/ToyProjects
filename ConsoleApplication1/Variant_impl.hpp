@@ -152,7 +152,6 @@ void Variant<Ts...>::assign(const TypeAt<I>& item) {
 		new (&storage) TypeAt<I>(item);
 		index = I;
 	}
-	return *this;
 }
 
 // Direct access
