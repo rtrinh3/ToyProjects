@@ -53,6 +53,8 @@ public:
 	// Direct access
 	template <size_t I>
 	TypeAt<I>& get();
+	template <size_t I>
+	const TypeAt<I>& get() const;
 
 	size_t getIndex() const;
 

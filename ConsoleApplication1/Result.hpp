@@ -7,7 +7,37 @@
 // Simple Optional type leveraging our Variant machinery
 struct Empty {};
 template <typename T>
-using Optional = Variant<Empty, T>;
+class Optional {
+private:
+	typedef Variant<Empty, T> value_type;
+	value_type contents;
+public:
+	Optional() = default;
+	Optional(T val) : contents(Pos<1>{}, std::move(val))
+	{
+	}
+
+	bool ok() const {
+		return 1 == contents.getIndex();
+	}
+
+	const T& get() const& {
+		return contents.get<1>();
+	}
+
+	T& get() & {
+		return contents.get<1>();
+	}
+
+	T get() && {
+		return contents.get<1>();
+	}
+
+	Optional& operator=(const T& that) {
+		contents.assign<1>(that);
+		return *this;
+	}
+};
 
 // Inspired by http://www.codethatgrows.com/lessons-learned-from-rust-the-result-monad/
 template <typename T>
@@ -33,15 +63,13 @@ public:
 		typedef Result<std::result_of_t<Fun&&(const T&)> > Return;
 		Optional<Return> res; // Using Optional because we can't default construct a Result.
 		contents.match(
-			[&](std::exception_ptr e) { res.assign<1>(Return::build_err(e)); },
+			[&](std::exception_ptr e) { res = Return::build_err(e); },
 			[&](const T& x) {
-				res.assign<1>(
-					Attempt(
-						[&] {return std::forward<Fun>(func)(x); }));
+				res = Attempt([&] {return std::forward<Fun>(func)(x); });
 			}
 		);
 		// Our res shouldn't be Empty at this point...
-		return res.get<1>();
+		return res.get();
 	}
 
 	template <typename Fun>
@@ -51,15 +79,13 @@ public:
 		typedef Result<std::result_of_t<Fun&&(T&&)> > Return;
 		Optional<Return> res;
 		contents.match(
-			[&](std::exception_ptr e) { res.assign<1>(Return::build_err(e)); },
-			[&](const T& x) {
-				res.assign<1>(
-					Attempt(
-						[&] {return std::forward<Fun>(func)(std::move(x)); }));
+			[&](std::exception_ptr e) { res = Return::build_err(e); },
+			[&](T& x) {
+				res = Attempt([&] {return std::forward<Fun>(func)(std::move(x)); });
 			}
 		);
 		// Our res shouldn't be Empty at this point...
-		return res.get<1>();
+		return res.get();
 	}
 
 	const T& Unwrap() const& {

@@ -167,6 +167,17 @@ Variant<Ts...>::get()
 }
 
 template <class... Ts>
+template <size_t I>
+const typename Variant<Ts...>::template TypeAt<I>&
+Variant<Ts...>::get() const
+{
+	if (index != I) {
+		throw WrongIndexException(I, index);
+	}
+	return (const TypeAt<I>&)storage;
+}
+
+template <class... Ts>
 size_t Variant<Ts...>::getIndex() const {
 	return index;
 }
