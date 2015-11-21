@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <type_traits>
 
 static constexpr std::size_t highOrderBit(std::uintmax_t n, std::size_t r = 0) {
 	return (n >> 1) ? highOrderBit(n >> 1, r + 1) : r;

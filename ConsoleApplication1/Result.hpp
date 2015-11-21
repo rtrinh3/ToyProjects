@@ -22,19 +22,19 @@ public:
 	}
 
 	const T& get() const& {
-		return contents.get<1>();
+		return contents.template get<1>();
 	}
 
 	T& get() & {
-		return contents.get<1>();
+		return contents.template get<1>();
 	}
 
 	T get() && {
-		return contents.get<1>();
+		return contents.template get<1>();
 	}
 
 	Optional& operator=(const T& that) {
-		contents.assign<1>(that);
+		contents.template assign<1>(that);
 		return *this;
 	}
 };
@@ -50,10 +50,10 @@ private:
 	}
 public:
 	static Result build_ok(T x) {
-		return value_type::construct<1>(std::move(x));
+		return value_type(Pos<1>{}, std::move(x));
 	}
 	static Result build_err(std::exception_ptr e) {
-		return value_type::construct<0>(e);
+		return value_type(Pos<0>{}, e);
 	}
 
 	template <typename Fun>

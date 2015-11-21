@@ -95,15 +95,15 @@ struct WrongIndexException : public virtual std::exception {
 	WrongIndexException(size_t expected, size_t actual) :
 		expected(expected), actual(actual)
 	{
-		sprintf_s(buffer, "Expected index %zu, got %zu.", expected, actual);
+		snprintf(buffer, sizeof(buffer), "Expected index %zu, got %zu.", expected, actual);
 	}
-	virtual const char* what() const override {
+	virtual const char* what() const noexcept override {
 		return buffer;
 	}
 };
 
 struct InvalidVariantException : public virtual std::exception {
-	virtual const char* what() const override {
+	virtual const char* what() const noexcept override {
 		return "The Variant is in an invalid state.";
 	}
 };
