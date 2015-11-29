@@ -25,9 +25,20 @@ Placeholder<7> x7;
 Placeholder<8> x8;
 Placeholder<9> x9;
 
-template <typename T, size_t Tag, bool isFinal = std::is_final<T>::value || !std::is_class<T>::value>
+enum ContainerQuery { Uninheritable, Inheritable, Empty };
+template <typename T>
+constexpr ContainerQuery ContainerCheckType() {
+	return (std::is_final<T>::value || !std::is_class<T>::value)
+		? ContainerQuery::Uninheritable
+		: (std::is_empty<T>::value && std::is_default_constructible<T>::value)
+		? ContainerQuery::Empty
+		: ContainerQuery::Inheritable;
+};
+
+template <typename T, size_t Tag, ContainerQuery isFinal = ContainerCheckType<T>()>
 class Container {
 private:
+	static_assert(isFinal == ContainerQuery::Uninheritable, "How is this Uninheritable?");
 	T val;
 public:
 	Container(T value) :
@@ -43,7 +54,7 @@ public:
 };
 
 template <typename T, size_t Tag>
-class Container<T, Tag, false> :
+class Container<T, Tag, ContainerQuery::Inheritable> :
 	private T
 {
 public:
@@ -56,6 +67,17 @@ public:
 	}
 	const T& get() const {
 		return *this;
+	}
+};
+
+template <typename T, size_t Tag>
+class Container<T, Tag, ContainerQuery::Empty>
+{
+public:
+	Container(const T& value) {
+	}
+	T get() const {
+		return T{};
 	}
 };
 
@@ -215,6 +237,8 @@ int main() {
 	}
 	//std::cout << '\n' << IndentTemplate(typeid(polynomial3).name()) << std::endl;
 	constexpr auto sizePolynomial = sizeof(polynomial3);
-	constexpr auto sizeSum = sizeof(x0 + x0);
+
+	auto foo = 1 + x0 + x0;
+	constexpr auto sizeSum = sizeof(foo);
 }
 
