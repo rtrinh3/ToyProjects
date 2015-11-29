@@ -23,5 +23,11 @@
     <ClInclude Include="placeholder_operators.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Container.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Placeholder.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

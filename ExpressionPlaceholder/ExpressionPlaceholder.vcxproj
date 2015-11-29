@@ -149,6 +149,8 @@
     <ClCompile Include="placeholder_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Container.hpp" />
+    <ClInclude Include="Placeholder.hpp" />
     <ClInclude Include="placeholder_operators.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

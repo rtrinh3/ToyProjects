@@ -6,80 +6,8 @@
 #include <string>
 #include <iostream>
 
-template <size_t I>
-struct Placeholder {
-	template <typename... Ts>
-	decltype(auto) operator()(const Ts&... args) const {
-		return std::get<I>(std::tie(args...));
-	}
-};
-
-Placeholder<0> x0;
-Placeholder<1> x1;
-Placeholder<2> x2;
-Placeholder<3> x3;
-Placeholder<4> x4;
-Placeholder<5> x5;
-Placeholder<6> x6;
-Placeholder<7> x7;
-Placeholder<8> x8;
-Placeholder<9> x9;
-
-enum ContainerQuery { Uninheritable, Inheritable, Empty };
-template <typename T>
-constexpr ContainerQuery ContainerCheckType() {
-	return (std::is_final<T>::value || !std::is_class<T>::value)
-		? ContainerQuery::Uninheritable
-		: (std::is_empty<T>::value && std::is_default_constructible<T>::value)
-		? ContainerQuery::Empty
-		: ContainerQuery::Inheritable;
-};
-
-template <typename T, size_t Tag, ContainerQuery isFinal = ContainerCheckType<T>()>
-class Container {
-private:
-	static_assert(isFinal == ContainerQuery::Uninheritable, "How is this Uninheritable?");
-	T val;
-public:
-	Container(T value) :
-		val(std::move(value))
-	{
-	}
-	T& get() {
-		return val;
-	}
-	const T& get() const {
-		return val;
-	}
-};
-
-template <typename T, size_t Tag>
-class Container<T, Tag, ContainerQuery::Inheritable> :
-	private T
-{
-public:
-	Container(T value) :
-		T(std::move(value))
-	{
-	}
-	T& get() {
-		return *this;
-	}
-	const T& get() const {
-		return *this;
-	}
-};
-
-template <typename T, size_t Tag>
-class Container<T, Tag, ContainerQuery::Empty>
-{
-public:
-	Container(const T& value) {
-	}
-	T get() const {
-		return T{};
-	}
-};
+#include "Container.hpp"
+#include "Placeholder.hpp"
 
 template <class Func, class Left, class Right>
 class Expression :
@@ -113,7 +41,7 @@ makeExpression(const Func& f, const Left& l, const Right& r)
 
 template <typename T>
 struct Constant :
-	private Container<T, 0>
+	private Container<T>
 {
 	Constant(T value) :
 		Container<T, 0>(std::move(value))
@@ -238,7 +166,7 @@ int main() {
 	//std::cout << '\n' << IndentTemplate(typeid(polynomial3).name()) << std::endl;
 	constexpr auto sizePolynomial = sizeof(polynomial3);
 
-	auto foo = 1 + x0 + x0;
+	auto foo = x0 + x0 + 1;
 	constexpr auto sizeSum = sizeof(foo);
 }
 
