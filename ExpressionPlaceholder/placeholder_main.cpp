@@ -25,26 +25,60 @@ Placeholder<7> x7;
 Placeholder<8> x8;
 Placeholder<9> x9;
 
-template <class Func, class Left, class Right>
-class Expression {
+template <typename T, size_t Tag, bool isFinal = std::is_final<T>::value || !std::is_class<T>::value>
+class Container {
 private:
-	Func f;
-	Left l;
-	Right r;
+	T val;
 public:
-	Expression(Func ff, Left ll, Right rr)
-		: f(std::move(ff)), l(std::move(ll)), r(std::move(rr))
+	Container(T value) :
+		val(std::move(value))
+	{
+	}
+	T& get() {
+		return val;
+	}
+	const T& get() const {
+		return val;
+	}
+};
+
+template <typename T, size_t Tag>
+class Container<T, Tag, false> :
+	private T
+{
+public:
+	Container(T value) :
+		T(std::move(value))
+	{
+	}
+	T& get() {
+		return *this;
+	}
+	const T& get() const {
+		return *this;
+	}
+};
+
+template <class Func, class Left, class Right>
+class Expression :
+	private Container<Func, 0>,
+	private Container<Left, 1>,
+	private Container<Right, 2>
+{
+public:
+	Expression(Func ff, Left ll, Right rr) :
+		Container<Func, 0>(std::move(ff)),
+		Container<Left, 1>(std::move(ll)),
+		Container<Right, 2>(std::move(rr))
 	{
 	}
 
 	template <typename... Ts>
 	decltype(auto) operator()(const Ts&... args) const {
-		return f(l(args...), r(args...));
-	}
-
-	template <typename... Ts>
-	decltype(auto) operator()(const Ts&... args) {
-		return f(l(args...), r(args...));
+		return Container<Func, 0>::get()(
+			Container<Left, 1>::get()(args...), 
+			Container<Right, 2>::get()(args...)
+			);
 	}
 };
 
@@ -56,24 +90,28 @@ makeExpression(const Func& f, const Left& l, const Right& r)
 }
 
 template <typename T>
-struct Constant {
-	T value;
-
+struct Constant :
+	private Container<T, 0>
+{
+	Constant(T value) :
+		Container<T, 0>(std::move(value))
+	{
+	}
 	template <typename... Ts>
 	T& operator()(const Ts&... args) & {
-		return value;
+		return get();
 	}
 	template <typename... Ts>
 	const T& operator()(const Ts&... args) const& {
-		return value;
+		return get();
 	}
 	template <typename... Ts>
 	T operator()(const Ts&... args) && {
-		return std::move(value);
+		return std::move(get());
 	}
 	template <typename... Ts>
 	const T operator()(const Ts&... args) const&& {
-		return std::move(value);
+		return std::move(get());
 	}
 };
 
@@ -89,11 +127,7 @@ struct Reference {
 	std::reference_wrapper<T> reference;
 
 	template <typename... Ts>
-	T& operator()(const Ts&... args) {
-		return reference.get();
-	}
-	template <typename... Ts>
-	const T& operator()(const Ts&... args) const {
+	T& operator()(const Ts&... args) const {
 		return reference.get();
 	}
 };
@@ -179,6 +213,8 @@ int main() {
 	for (double n : {-4, -1, 0, +2}) {
 		std::cout << polynomial3(n) << " ";
 	}
-	std::cout << '\n' << IndentTemplate(typeid(polynomial3).name()) << std::endl;
+	//std::cout << '\n' << IndentTemplate(typeid(polynomial3).name()) << std::endl;
+	constexpr auto sizePolynomial = sizeof(polynomial3);
+	constexpr auto sizeSum = sizeof(x0 + x0);
 }
 
