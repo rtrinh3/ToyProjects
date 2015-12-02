@@ -7,25 +7,37 @@
 // General version
 template <typename Return, typename... Args>
 class Function {
-	std::shared_ptr<void> functor = nullptr;
+	std::shared_ptr<void> functor;
 
 	using InvokerPtr = Return(*)(void*, Args...);
-	InvokerPtr invoker = nullptr;
+	InvokerPtr invoker;
 
 	template <class Func>
 	static Return Invoke(void* func, Args... args) {
 		// If we are supposed to return void, then cast the result to void;
 		// if not, cast it to its natural return value (ie: don't cast it at all) and let implicit conversions handle the conversion to Return.
 		// This allows us to handle int -> double, ReturningThings -> void, and forbid things like void* -> int.
-		using ActualReturn = std::result_of_t<Func&(Args...)>;
-		using MaybeVoid = std::conditional_t<
-			std::is_same<void, Return>::value,
+		using InvocationReturn = std::result_of_t<Func&(Args...)>;
+		using ReturnVoid = std::is_same<void, Return>;
+		using ConvertibleReturn = std::is_convertible<InvocationReturn, Return>;
+		static_assert(ReturnVoid::value || ConvertibleReturn::value, "Can't convert this invocation to Return"); // Friendlier message
+		using ActualReturn = std::conditional_t<
+			ReturnVoid::value,
 			void,
-			ActualReturn>;
-		return (MaybeVoid)std::invoke(*(Func*)func, std::move(args)...);
+			InvocationReturn>;
+		return (ActualReturn)std::invoke(*(Func*)func, std::move(args)...);
 	}
+
+	static Return EmptyInvoker(void*, Args... args) {
+		throw std::runtime_error("Empty Function");
+	}
+
 public:
-	Function() = default;
+	Function(nullptr_t ptr = nullptr) :
+		functor(nullptr),
+		invoker(&EmptyInvoker)
+	{
+	}
 
 	template <typename Func>
 	Function(Func func) :
@@ -58,7 +70,7 @@ int main() {
 	bar(7);
 
 	// Fails because void* is not implicitly convertible to int.
-	/*Function<int, int> whatIsThis(std::malloc);
-	auto quack = whatIsThis(4);*/
+	//Function<int, int> whatIsThis(std::malloc);
+	//auto quack = whatIsThis(4);
 
 }
