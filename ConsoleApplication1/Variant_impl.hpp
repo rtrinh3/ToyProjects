@@ -190,7 +190,7 @@ void Variant<Ts...>::match(Funcs&&... funcs) {
 		"Need as many functions as possible types.");
 	void* funcPtrs[] = { &funcs... };
 	using InvokerPtr = void(*)(void*, void*);
-	static constexpr InvokerPtr invokers[] = {
+	static const InvokerPtr invokers[] = {
 		Variant_impl::Match_Invoker<Funcs, Ts>... ,
 		Variant_impl::Invalid_Match_Invoker
 	};
@@ -204,7 +204,7 @@ void Variant<Ts...>::match(Funcs&&... funcs) const {
 		"Need as many functions as possible types.");
 	void* funcPtrs[] = { (void*)&funcs... };
 	using InvokerPtr = void(*)(void*, const void*);
-	static constexpr InvokerPtr invokers[] = {
+	static const InvokerPtr invokers[] = {
 		Variant_impl::Match_Invoker<Funcs, const Ts>... ,
 		Variant_impl::Invalid_Match_Invoker_Const
 	};
@@ -216,7 +216,7 @@ template <class... Ts>
 template <class Fun>
 void Variant<Ts...>::call(Fun&& fun) {
 	using funcPtr = void(*)(Fun&&, void*);
-	static constexpr funcPtr funcArray[] = {
+	static const funcPtr funcArray[] = {
 		&Variant_impl::Call_Invoker<Fun, Ts>... ,
 		&Variant_impl::Invalid_Call_Invoker<Fun, void>
 	};
@@ -227,7 +227,7 @@ template <class... Ts>
 template <class Fun>
 void Variant<Ts...>::call(Fun&& fun) const {
 	using funcPtr = void(*)(Fun&&, const void*);
-	static constexpr funcPtr funcArray[] = {
+	static const funcPtr funcArray[] = {
 		&Variant_impl::Call_Invoker<Fun, const Ts>... ,
 		&Variant_impl::Invalid_Call_Invoker<Fun, const void>
 	};
@@ -241,7 +241,7 @@ Variant<Ts...>::apply(Func&& func) const
 {
 	using ResultType = std::common_type_t<std::result_of_t<Func&&(Ts)>...>;
 	using funcPtr = ResultType(*)(Func&&, const void*);
-	static constexpr funcPtr funcArray[] = {
+	static const funcPtr funcArray[] = {
 		&Variant_impl::Apply_Invoker<Func, const Ts, ResultType>::go... ,
 		&Variant_impl::Invalid_Apply_Invoker<Func, const void, ResultType>
 	};
