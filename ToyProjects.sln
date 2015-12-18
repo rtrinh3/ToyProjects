@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConsoleApplication1", "ConsoleApplication1\ConsoleApplication1.vcxproj", "{3703D36F-C109-4D07-B7D8-F0BBB3FE1AEB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Variant", "ConsoleApplication1\ConsoleApplication1.vcxproj", "{3703D36F-C109-4D07-B7D8-F0BBB3FE1AEB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test_Best_Size_Integer", "Test_Best_Size_Integer\Test_Best_Size_Integer.vcxproj", "{4C53CD2F-B6CB-42C3-9B03-7CFA39E35B9C}"
 EndProject
@@ -16,6 +16,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExpressionPlaceholder", "ExpressionPlaceholder\ExpressionPlaceholder.vcxproj", "{0EDE1E5F-A5E0-4F98-A97B-0B71CB660CBF}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Function", "Function\Function.vcxproj", "{AC404DF2-4BAB-4A25-BADD-CC78965FFEEA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Reddit245", "Reddit245\Reddit245.vcxproj", "{6D478655-9D46-42BD-A39D-486F9BDD2344}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,6 +101,16 @@ Global
 		{AC404DF2-4BAB-4A25-BADD-CC78965FFEEA}.Release|x64.Build.0 = Release|x64
 		{AC404DF2-4BAB-4A25-BADD-CC78965FFEEA}.Release|x86.ActiveCfg = Release|Win32
 		{AC404DF2-4BAB-4A25-BADD-CC78965FFEEA}.Release|x86.Build.0 = Release|Win32
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Debug|x64.ActiveCfg = Debug|x64
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Debug|x64.Build.0 = Debug|x64
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Debug|x86.ActiveCfg = Debug|Win32
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Debug|x86.Build.0 = Debug|Win32
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Release|Any CPU.ActiveCfg = Release|Win32
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Release|x64.ActiveCfg = Release|x64
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Release|x64.Build.0 = Release|x64
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Release|x86.ActiveCfg = Release|Win32
+		{6D478655-9D46-42BD-A39D-486F9BDD2344}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
