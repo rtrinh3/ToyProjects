@@ -21,8 +21,6 @@ namespace Params {
 };
 
 struct IpRange {
-	uint32_t left;
-	uint32_t right;
 	const char* name;
 	uint32_t span;
 };
@@ -38,13 +36,9 @@ struct RangeBoundMarker {
 	bool starting;
 };
 
-struct PartitionMarker {
-	uint64_t start; // Wider than 32 bits, to avoid some corner cases.
-	const char* rangeName;
-};
-
 std::unordered_set<std::string> StringPool;
-std::vector<PartitionMarker> Partitions;
+std::vector<uint64_t> Partitions; // Wider than 32bits, to avoid corner cases
+std::vector<const char*> PartitionNames;
 
 size_t ParseNumber(const std::pair<std::string::const_iterator, std::string::const_iterator>& str) {
 	size_t ans = 0;
@@ -57,7 +51,7 @@ size_t ParseNumber(const std::pair<std::string::const_iterator, std::string::con
 void ParseDb() {
 	std::list<IpRange> Ranges;
 	std::map<uint64_t, std::vector<RangeBoundMarker> > Bounds;
-	Ranges.push_back(IpRange{ 0, 0xffffffff, "<unknown>", 0xffffffff });
+	Ranges.push_back(IpRange{ "<unknown>", 0xffffffff });
 	Bounds[0].push_back({ &Ranges.back(), true });
 
 	std::ifstream indb(Params::Ranges);
@@ -72,7 +66,7 @@ void ParseDb() {
 			std::string name(match[9].first, match[9].second);
 			auto interned = StringPool.insert(name);
 
-			Ranges.push_back(IpRange{ left, right, interned.first->c_str(), (right - left) });
+			Ranges.push_back(IpRange{ interned.first->c_str(), (right - left) });
 			Bounds[left].push_back({ &Ranges.back(), true });
 			Bounds[right + uint64_t(1)].push_back({ &Ranges.back(), false });
 		}
@@ -90,7 +84,8 @@ void ParseDb() {
 		}
 		// Select the smallest one, and mark it
 		const char* name = (*ActiveRanges.begin())->name;
-		Partitions.push_back({ kvp.first, name });
+		Partitions.push_back(kvp.first);
+		PartitionNames.push_back(name);
 	}
 }
 
@@ -106,10 +101,10 @@ void Stats() {
 			uint32_t ip = (ParseNumber(match[1]) << 24) | (ParseNumber(match[2]) << 16) | (ParseNumber(match[3]) << 8) | (ParseNumber(match[4]));
 
 			// Find partition
-			auto part = std::lower_bound(Partitions.begin(), Partitions.end(), ip, [](const PartitionMarker& pp, uint32_t ii) {
-				return pp.start < ii;
-			});
-			counts[std::prev(part)->rangeName]++;
+			auto part = std::upper_bound(Partitions.begin(), Partitions.end(), ip);
+			--part; // upper_bound gives us the iterator > our value; we want the iterator <= our value, which would be the previous one.
+			auto name = PartitionNames[std::distance(Partitions.begin(), part)];
+			counts[name]++;
 		}
 	}
 	std::set<std::pair<size_t, std::string>, std::greater<> > sorted_stats;
