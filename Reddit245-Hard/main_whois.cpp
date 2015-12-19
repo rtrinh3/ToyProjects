@@ -1,6 +1,5 @@
 // https://www.reddit.com/r/dailyprogrammer/comments/3xdmtw/20151218_challenge_245_hard_guess_whois/
 #include <iostream>
-#include <regex>
 #include <string>
 #include <unordered_set>
 #include <set>
@@ -15,6 +14,10 @@
 #include <chrono>
 #include <list>
 
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <WinSock2.h>
+
+
 namespace Params {
 	const char Ranges[] = "ips_sample.txt";
 	const char Queries[] = "query_sample.txt";
@@ -26,13 +29,13 @@ struct IpRange {
 };
 
 struct IpRangeSpanCompare {
-	bool operator()(const IpRange* a, const IpRange* b) const {
-		return std::tie(a->span, a->name) < std::tie(b->span, b->name);
+	bool operator()(const IpRange& a, const IpRange& b) const {
+		return std::tie(a.span, a.name) < std::tie(b.span, b.name);
 	}
 };
 
 struct RangeBoundMarker {
-	const IpRange* range;
+	IpRange range;
 	bool starting;
 };
 
@@ -40,40 +43,36 @@ std::unordered_set<std::string> StringPool;
 std::vector<uint64_t> Partitions; // Wider than 32bits, to avoid corner cases
 std::vector<const char*> PartitionNames;
 
-unsigned int ParseNumber(const std::pair<std::string::const_iterator, std::string::const_iterator>& str) {
-	unsigned int ans = 0;
-	for (auto first = str.first; first != str.second; ++first) {
-		ans = (ans * 10) + (*first - '0');
-	}
-	return ans;
+uint32_t ParseIp(const std::string& ip) {
+	auto pass1 = inet_addr(ip.c_str());
+	decltype(pass1) pass2;
+	_swab((char*)&pass1, (char*)&pass2, sizeof(pass1));
+	return pass2;
 }
 
 void ParseDb() {
 	using namespace std::chrono_literals;
 	auto startParse = std::chrono::high_resolution_clock::now();
-	std::list<IpRange> Ranges;
 	std::map<uint64_t, std::vector<RangeBoundMarker> > Bounds;
-	Ranges.push_back(IpRange{ "<unknown>", 0xffffffff });
-	Bounds[0].push_back({ &Ranges.back(), true });
+	Bounds[0].push_back({ IpRange{ "<unknown>", 0xffffffff }, true });;
 
 	std::ifstream indb(Params::Ranges);
-	std::string line;
-	std::regex pattern(R"=((\d+)\.(\d+)\.(\d+)\.(\d+) (\d+)\.(\d+)\.(\d+)\.(\d+) (.*))=");
-	std::smatch match;
-	while (indb.good()) {
-		std::getline(indb, line);
-		if (std::regex_match(line, match, pattern)) {
-			uint32_t left = (ParseNumber(match[1]) << 24) | (ParseNumber(match[2]) << 16) | (ParseNumber(match[3]) << 8) | (ParseNumber(match[4]));
-			uint32_t right = (ParseNumber(match[5]) << 24) | (ParseNumber(match[6]) << 16) | (ParseNumber(match[7]) << 8) | (ParseNumber(match[8]));
-			auto interned = StringPool.emplace(match[9].first, match[9].second);
+	std::string left_str;
+	std::string right_str;
+	std::string name_str;
+	while (indb >> left_str >> right_str) {
+		indb.ignore();
+		std::getline(indb, name_str);
+		uint32_t left = ParseIp(left_str);
+		uint32_t right = ParseIp(right_str);
+		auto interned = StringPool.insert(name_str);
 
-			Ranges.push_back(IpRange{ interned.first->c_str(), (right - left) });
-			Bounds[left].push_back({ &Ranges.back(), true });
-			Bounds[right + uint64_t(1)].push_back({ &Ranges.back(), false });
-		}
+		IpRange newRange{ interned.first->c_str(), (right - left) };
+		Bounds[left].push_back({ newRange, true });
+		Bounds[right + uint64_t(1)].push_back({ newRange, false });
 	}
 	auto startPartition = std::chrono::high_resolution_clock::now();
-	std::set<const IpRange*, IpRangeSpanCompare> ActiveRanges;
+	std::set<IpRange, IpRangeSpanCompare> ActiveRanges;
 	for (auto&& kvp : Bounds) {
 		// Determine currently active ranges
 		for (auto&& bound : kvp.second) {
@@ -84,9 +83,8 @@ void ParseDb() {
 			}
 		}
 		// Select the smallest one, and mark it
-		const char* name = (*ActiveRanges.begin())->name;
 		Partitions.push_back(kvp.first);
-		PartitionNames.push_back(name);
+		PartitionNames.push_back((ActiveRanges.begin())->name);
 	}
 	auto end = std::chrono::high_resolution_clock::now();
 	std::cout << "Parse:" << ((startPartition - startParse) / 1ms) << "ms Partition:" << ((end - startPartition) / 1ms) << "ms\n";
@@ -95,22 +93,17 @@ void ParseDb() {
 void Stats() {
 	std::unordered_map<const char*, size_t> counts;
 	std::ifstream reqs(Params::Queries);
-	std::string line;
-	std::regex pattern(R"=((\d+)\.(\d+)\.(\d+)\.(\d+))=");
-	std::smatch match;
-	while (reqs.good()) {
-		std::getline(reqs, line);
-		if (std::regex_match(line, match, pattern)) {
-			uint32_t ip = (ParseNumber(match[1]) << 24) | (ParseNumber(match[2]) << 16) | (ParseNumber(match[3]) << 8) | (ParseNumber(match[4]));
+	std::string ip_str;
+	while (reqs >> ip_str) {
+		uint32_t ip = ParseIp(ip_str);
 
-			// Find partition
-			auto part = std::upper_bound(Partitions.begin(), Partitions.end(), ip);
-			--part; // upper_bound gives us the iterator > our value; we want the iterator <= our value, which would be the previous one.
-			auto name = PartitionNames[std::distance(Partitions.begin(), part)];
-			counts[name]++;
-		}
+		// Find partition
+		auto part = std::upper_bound(Partitions.begin(), Partitions.end(), ip);
+		--part; // upper_bound gives us the iterator > our value; we want the iterator <= our value, which would be the previous one.
+		auto name = PartitionNames[std::distance(Partitions.begin(), part)];
+		counts[name]++;
 	}
-	std::set<std::pair<size_t, std::string>, std::greater<> > sorted_stats;
+	std::set<std::pair<size_t, const char*>, std::greater<> > sorted_stats;
 	for (auto&& kvp : counts) {
 		sorted_stats.insert({ kvp.second, kvp.first });
 	}
