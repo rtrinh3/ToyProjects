@@ -40,8 +40,8 @@ std::unordered_set<std::string> StringPool;
 std::vector<uint64_t> Partitions; // Wider than 32bits, to avoid corner cases
 std::vector<const char*> PartitionNames;
 
-size_t ParseNumber(const std::pair<std::string::const_iterator, std::string::const_iterator>& str) {
-	size_t ans = 0;
+unsigned int ParseNumber(const std::pair<std::string::const_iterator, std::string::const_iterator>& str) {
+	unsigned int ans = 0;
 	for (auto first = str.first; first != str.second; ++first) {
 		ans = (ans * 10) + (*first - '0');
 	}
@@ -58,15 +58,14 @@ void ParseDb() {
 
 	std::ifstream indb(Params::Ranges);
 	std::string line;
-	std::regex pattern(R"=((\d+).(\d+).(\d+).(\d+) (\d+).(\d+).(\d+).(\d+) (.*))=");
+	std::regex pattern(R"=((\d+)\.(\d+)\.(\d+)\.(\d+) (\d+)\.(\d+)\.(\d+)\.(\d+) (.*))=");
 	std::smatch match;
 	while (indb.good()) {
 		std::getline(indb, line);
 		if (std::regex_match(line, match, pattern)) {
 			uint32_t left = (ParseNumber(match[1]) << 24) | (ParseNumber(match[2]) << 16) | (ParseNumber(match[3]) << 8) | (ParseNumber(match[4]));
 			uint32_t right = (ParseNumber(match[5]) << 24) | (ParseNumber(match[6]) << 16) | (ParseNumber(match[7]) << 8) | (ParseNumber(match[8]));
-			std::string name(match[9].first, match[9].second);
-			auto interned = StringPool.insert(name);
+			auto interned = StringPool.emplace(match[9].first, match[9].second);
 
 			Ranges.push_back(IpRange{ interned.first->c_str(), (right - left) });
 			Bounds[left].push_back({ &Ranges.back(), true });
@@ -97,7 +96,7 @@ void Stats() {
 	std::unordered_map<const char*, size_t> counts;
 	std::ifstream reqs(Params::Queries);
 	std::string line;
-	std::regex pattern(R"=((\d+).(\d+).(\d+).(\d+))=");
+	std::regex pattern(R"=((\d+)\.(\d+)\.(\d+)\.(\d+))=");
 	std::smatch match;
 	while (reqs.good()) {
 		std::getline(reqs, line);
