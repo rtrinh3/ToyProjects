@@ -27,7 +27,7 @@ struct IpRange {
 
 struct IpRangeSpanCompare {
 	bool operator()(const IpRange* a, const IpRange* b) const {
-		return a->span < b->span;
+		return std::tie(a->span, a->name) < std::tie(b->span, b->name);
 	}
 };
 
@@ -49,6 +49,8 @@ size_t ParseNumber(const std::pair<std::string::const_iterator, std::string::con
 }
 
 void ParseDb() {
+	using namespace std::chrono_literals;
+	auto startParse = std::chrono::high_resolution_clock::now();
 	std::list<IpRange> Ranges;
 	std::map<uint64_t, std::vector<RangeBoundMarker> > Bounds;
 	Ranges.push_back(IpRange{ "<unknown>", 0xffffffff });
@@ -71,7 +73,7 @@ void ParseDb() {
 			Bounds[right + uint64_t(1)].push_back({ &Ranges.back(), false });
 		}
 	}
-
+	auto startPartition = std::chrono::high_resolution_clock::now();
 	std::set<const IpRange*, IpRangeSpanCompare> ActiveRanges;
 	for (auto&& kvp : Bounds) {
 		// Determine currently active ranges
@@ -87,6 +89,8 @@ void ParseDb() {
 		Partitions.push_back(kvp.first);
 		PartitionNames.push_back(name);
 	}
+	auto end = std::chrono::high_resolution_clock::now();
+	std::cout << "Parse:" << ((startPartition - startParse) / 1ms) << "ms Partition:" << ((end - startPartition) / 1ms) << "ms\n";
 }
 
 void Stats() {
