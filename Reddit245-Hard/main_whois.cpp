@@ -16,6 +16,7 @@
 
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <WinSock2.h>
+// Gonna need something else for other platforms...
 
 
 namespace Params {
@@ -45,8 +46,7 @@ std::vector<const char*> PartitionNames;
 
 uint32_t ParseIp(const std::string& ip) {
 	auto pass1 = inet_addr(ip.c_str());
-	decltype(pass1) pass2;
-	_swab((char*)&pass1, (char*)&pass2, sizeof(pass1));
+	auto pass2 = ntohl(pass1);
 	return pass2;
 }
 
