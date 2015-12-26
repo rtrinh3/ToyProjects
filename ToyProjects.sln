@@ -21,6 +21,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Reddit245", "Reddit245\Redd
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Reddit245-Hard", "Reddit245-Hard\Reddit245-Hard.vcxproj", "{3D1FA980-2FB7-4F9E-83C4-52967A46A3C6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reddit246-Intermediate", "Reddit246-Intermediate\Reddit246-Intermediate.csproj", "{16DB2292-EC50-4591-9316-6477B0469C05}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -123,6 +125,18 @@ Global
 		{3D1FA980-2FB7-4F9E-83C4-52967A46A3C6}.Release|x64.Build.0 = Release|x64
 		{3D1FA980-2FB7-4F9E-83C4-52967A46A3C6}.Release|x86.ActiveCfg = Release|Win32
 		{3D1FA980-2FB7-4F9E-83C4-52967A46A3C6}.Release|x86.Build.0 = Release|Win32
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Debug|x64.Build.0 = Debug|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Debug|x86.Build.0 = Debug|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Release|Any CPU.Build.0 = Release|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Release|x64.ActiveCfg = Release|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Release|x64.Build.0 = Release|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Release|x86.ActiveCfg = Release|Any CPU
+		{16DB2292-EC50-4591-9316-6477B0469C05}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
