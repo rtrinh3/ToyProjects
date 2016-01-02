@@ -25,29 +25,39 @@ struct Sqrt {
 
 template <class... As>
 struct Help {
+	/*template <class... Bs>
+	static std::tuple<std::pair<As, Bs>...> NonWorking(Bs... bs) {
+		using Return = std::tuple<std::pair<As, Bs>...>;
+		return Return{};
+	}*/
+
 	template <class... Bs>
-	static const char* me(Bs... bs) {
-		return typeid(std::common_type_t<std::result_of_t<Bs&&(const As&)>...>).name();
-	}
-	
-	template <class... Bs>
-	static
-		std::common_type_t<std::result_of_t<Bs && (const As&)>...>
-		out(Bs... bs)
-	{
-		return{};
+	static auto Working(Bs... bs) {
+		using Return = std::tuple<std::pair<As, Bs>...>;
+		return Return{};
 	}
 };
+
+template <typename T>
+void PrintType() {
+	std::cout << typeid(T).name() << '\n';
+}
 
 int main() {
 	Sqrt s;
 	Variant<int, float> foo(Pos<0>{}, 10);
 	auto bar = foo.apply(s);
-	auto baz = foo.match(s, s);
-	std::cout << baz << '\n';
-	//std::cout << Help<int, float>::me(s, s) << '\n';
+	foo.match(
+		[](int) {puts("int"); },
+		[](float) {puts("float"); }
+	);
+
 	auto qux = Attempt([] {return 1; })
 		.Map([](int n) {return n + 2; })
 		.Unwrap();
 	std::cout << qux << '\n';
+
+	//auto broken = Help<int, char>::NonWorking(1.0, 1.0f);
+	auto good = Help<int, char>::Working(1.0, 1.0f);
+	PrintType<decltype(good)>();
 }

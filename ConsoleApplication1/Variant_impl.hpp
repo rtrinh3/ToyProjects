@@ -177,7 +177,7 @@ size_t Variant<Ts...>::getIndex() const {
 // Takes n functors. According to the index, calls the nth functor.
 template <class... Ts>
 template <class... Funcs>
-auto //std::common_type_t<std::result_of_t<Funcs(Ts&)>...>
+auto //std::common_type_t<std::result_of_t<Funcs&&(Ts&)>...>
 Variant<Ts...>::match(Funcs&&... funcs) {
 	static_assert(sizeof...(Funcs) == size,
 		"Need as many functions as possible types.");
@@ -194,7 +194,7 @@ Variant<Ts...>::match(Funcs&&... funcs) {
 
 template <class... Ts>
 template <class... Funcs>
-auto //std::common_type_t<std::result_of_t<Funcs(const Ts&)>...>
+auto //std::common_type_t<std::result_of_t<Funcs&&(const Ts&)>...>
 Variant<Ts...>::match(Funcs&&... funcs) const {
 	static_assert(sizeof...(Funcs) == size,
 		"Need as many functions as possible types.");

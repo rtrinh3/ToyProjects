@@ -92,15 +92,15 @@ public:
 
 	const T& Unwrap() const& {
 		return contents.match(
-			[&](std::exception_ptr e) -> const T& { std::rethrow_exception(e); },
-			[&](const T& x) -> const T& { return x; }
+			[](std::exception_ptr e) -> const T& { std::rethrow_exception(e); },
+			[](const T& x) -> const T& { return x; }
 		);
 	}
 
 	T Unwrap() && {
 		return contents.match(
-			[&](std::exception_ptr e) -> T { std::rethrow_exception(e); },
-			[&](T x) -> T { return x; }
+			[](std::exception_ptr e) -> T { std::rethrow_exception(e); },
+			[](T x) -> T { return x; }
 		);
 	}
 };

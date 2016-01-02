@@ -57,7 +57,7 @@ public:
 	auto //std::common_type_t<std::result_of_t<Funcs&&(Ts&)>...>
 		match(Funcs&&... funcs);
 	template <class... Funcs>
-	auto //std::common_type_t<std::result_of_t<Funcs(const Ts&)>...> // Why can't I put the return type here?
+	auto //std::common_type_t<std::result_of_t<Funcs&&(const Ts&)>...> // Why can't I put the return type here?
 		match(Funcs&&... funcs) const;
 
 	// Takes one functor. Calls the functor with the actual type of the variant, and returns the result.
