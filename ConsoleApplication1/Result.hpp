@@ -4,7 +4,7 @@
 #include <memory>
 #include "Variant.hpp"
 
-// Simple Optional type leveraging our Variant machinery
+/*// Simple Optional type leveraging our Variant machinery
 struct Empty {};
 template <typename T>
 class Optional {
@@ -37,7 +37,7 @@ public:
 		contents.template assign<1>(that);
 		return *this;
 	}
-};
+};*/
 
 // Inspired by http://www.codethatgrows.com/lessons-learned-from-rust-the-result-monad/
 template <typename T>
@@ -61,15 +61,16 @@ public:
 		Map(Fun&& func) const&
 	{
 		typedef Result<std::result_of_t<Fun&&(const T&)> > Return;
-		Optional<Return> res; // Using Optional because we can't default construct a Result.
-		contents.match(
-			[&](std::exception_ptr e) { res = Return::build_err(e); },
-			[&](const T& x) {
-				res = Attempt([&] {return std::forward<Fun>(func)(x); });
+		return contents.match(
+			[&](std::exception_ptr e) -> Return {
+				return Return::build_err(e);
+			},
+			[&](const T& x) -> Return {
+				return Attempt([&] {
+					return std::forward<Fun>(func)(x);
+				});
 			}
 		);
-		// Our res shouldn't be Empty at this point...
-		return res.get();
 	}
 
 	template <typename Fun>
@@ -77,29 +78,30 @@ public:
 		Map(Fun&& func) &&
 	{
 		typedef Result<std::result_of_t<Fun&&(T&&)> > Return;
-		Optional<Return> res;
-		contents.match(
-			[&](std::exception_ptr e) { res = Return::build_err(e); },
-			[&](T& x) {
-				res = Attempt([&] {return std::forward<Fun>(func)(std::move(x)); });
+		return contents.match(
+			[&](std::exception_ptr e) -> Return {
+				return Return::build_err(e);
+			},
+			[&](T& x) -> Return {
+				return Attempt([&] {
+					return std::forward<Fun>(func)(std::move(x));
+				});
 			}
 		);
-		// Our res shouldn't be Empty at this point...
-		return res.get();
 	}
 
 	const T& Unwrap() const& {
-		const T* res = nullptr;
-		contents.match(
-			[&](std::exception_ptr e) { std::rethrow_exception(e); },
-			[&](const T& x) { res = std::addressof(x); }
+		return contents.match(
+			[&](std::exception_ptr e) -> const T& { std::rethrow_exception(e); },
+			[&](const T& x) -> const T& { return x; }
 		);
-		// If we made it here, res is no longer nullptr.
-		return *res;
 	}
 
 	T Unwrap() && {
-		return std::move(const_cast<const Result*>(this)->Unwrap());
+		return contents.match(
+			[&](std::exception_ptr e) -> T { std::rethrow_exception(e); },
+			[&](T x) -> T { return x; }
+		);
 	}
 };
 

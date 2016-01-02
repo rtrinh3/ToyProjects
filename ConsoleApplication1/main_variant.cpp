@@ -23,43 +23,31 @@ struct Sqrt {
 
 #define FUNC(f) [&](auto&& x){return f(x);}
 
-using MyEnum = Variant<Print, Sqrt>;
-
-int main() {
-	const Sqrt func_sqrt;
-
-	Variant<int, string> mything("Hello");
-	mything.call(Print{});
-
-	Variant<int, float, double> myotherthing(Pos<0>{}, 10);
-	auto what = myotherthing.apply(func_sqrt);
-	cout << what << "\n";
-
-	const Variant<string, int> whatWillThisBe;
-	whatWillThisBe.match(
-		[](const string& s) 
-			{ cout << "I got a string: [" << s << "]\n"; },
-		func_sqrt
-	);
-
-	// Rust-style "enum" (sum of unit types)
-	MyEnum rust_style;
-	cout << "Rust-style enum: " << sizeof(rust_style);
-	rust_style.match(
-		[](Print) { cout << " Print :]\n"; },
-		[](Sqrt) { cout << " Sqrt :)\n"; }
-	);
-
-	// Testing the Result monad
-	auto getAThing = Attempt([&]{ return std::string("78"); })
-		.Map(FUNC(std::stoi))
-		.Map(func_sqrt);
-	try {
-		std::cout << "No problem: " << getAThing.Unwrap() << "\n";
-	} catch (std::exception& e) {
-		std::cout << "Unwrap: " << e.what() << "\n";
+template <class... As>
+struct Help {
+	template <class... Bs>
+	static const char* me(Bs... bs) {
+		return typeid(std::common_type_t<std::result_of_t<Bs&&(const As&)>...>).name();
 	}
 	
-	// Failures
-	//Variant<int, string> widething(L"Hello");
+	template <class... Bs>
+	static
+		std::common_type_t<std::result_of_t<Bs && (const As&)>...>
+		out(Bs... bs)
+	{
+		return{};
+	}
+};
+
+int main() {
+	Sqrt s;
+	Variant<int, float> foo(Pos<0>{}, 10);
+	auto bar = foo.apply(s);
+	auto baz = foo.match(s, s);
+	std::cout << baz << '\n';
+	//std::cout << Help<int, float>::me(s, s) << '\n';
+	auto qux = Attempt([] {return 1; })
+		.Map([](int n) {return n + 2; })
+		.Unwrap();
+	std::cout << qux << '\n';
 }

@@ -8,16 +8,6 @@ namespace Variant_impl {
 		const void,
 		void>;
 
-	template <class Func, class Arg>
-	void Call_Invoker(Func&& func, MaybeConstVoid<Arg>* arg) {
-		std::forward<Func>(func)(*(Arg*)arg);
-	}
-
-	template <class Func, class Arg>
-	void Invalid_Call_Invoker(Func&&, Arg*) {
-		throw InvalidVariantException{};
-	}
-
 	// If I try to write Apply_Invoker as a function, I can't make constexpr the array in Apply_impl :[
 	template <class Func, class Arg, class Return>
 	struct Apply_Invoker {
@@ -31,16 +21,18 @@ namespace Variant_impl {
 		throw InvalidVariantException{};
 	}
 
-	template <typename Fun, typename Arg>
-	void Match_Invoker(void* fun, MaybeConstVoid<Arg>* arg) {
-		((Fun&&)*(std::remove_reference_t<Fun>*)fun)(*(Arg*)arg);
+	template <typename Fun, typename Arg, typename Return>
+	Return Match_Invoker(void* fun, MaybeConstVoid<Arg>* arg) {
+		return ((Fun&&)*(std::remove_reference_t<Fun>*)fun)(*(Arg*)arg);
 	}
 
-	void Invalid_Match_Invoker(void* fun, void*) {
+	template <typename Return>
+	Return Invalid_Match_Invoker(void* fun, void*) {
 		throw InvalidVariantException{};
 	}
 
-	void Invalid_Match_Invoker_Const(void* fun, const void*) {
+	template <typename Return>
+	Return Invalid_Match_Invoker_Const(void* fun, const void*) {
 		throw InvalidVariantException{};
 	}
 
@@ -97,7 +89,7 @@ bool Variant<Ts...>::valid() const {
 template <class... Ts>
 void Variant<Ts...>::destroySelf() {
 	if (valid()) {
-		call(Variant_impl::Destruct{});
+		apply(Variant_impl::Destruct{});
 		index = INVALID;
 	}
 	// If it was invalid, we have nothing to destroy.
@@ -185,61 +177,59 @@ size_t Variant<Ts...>::getIndex() const {
 // Takes n functors. According to the index, calls the nth functor.
 template <class... Ts>
 template <class... Funcs>
-void Variant<Ts...>::match(Funcs&&... funcs) {
+auto //std::common_type_t<std::result_of_t<Funcs(Ts&)>...>
+Variant<Ts...>::match(Funcs&&... funcs) {
 	static_assert(sizeof...(Funcs) == size,
 		"Need as many functions as possible types.");
-	void* funcPtrs[] = { &funcs... };
-	using InvokerPtr = void(*)(void*, void*);
+	void* funcPtrs[] = { (void*)&funcs... };
+
+	using Return = std::common_type_t<std::result_of_t<Funcs&&(Ts&)>...>;
+	using InvokerPtr = Return(*)(void*, void*);
 	static const InvokerPtr invokers[] = {
-		Variant_impl::Match_Invoker<Funcs, Ts>... ,
-		Variant_impl::Invalid_Match_Invoker
+		Variant_impl::Match_Invoker<Funcs, Ts, Return>... ,
+		Variant_impl::Invalid_Match_Invoker<Return>
 	};
-	invokers[index](funcPtrs[index], &storage);
+	return invokers[index](funcPtrs[index], &storage);
 }
 
 template <class... Ts>
 template <class... Funcs>
-void Variant<Ts...>::match(Funcs&&... funcs) const {
+auto //std::common_type_t<std::result_of_t<Funcs(const Ts&)>...>
+Variant<Ts...>::match(Funcs&&... funcs) const {
 	static_assert(sizeof...(Funcs) == size,
 		"Need as many functions as possible types.");
 	void* funcPtrs[] = { (void*)&funcs... };
-	using InvokerPtr = void(*)(void*, const void*);
+
+	// Oddly enough, I can declare an alias for this type, even though I can't spell this as the return type of this method...
+	using Return = std::common_type_t<std::result_of_t<Funcs&&(const Ts&)>...>;
+	using InvokerPtr = Return(*)(void*, const void*);
 	static const InvokerPtr invokers[] = {
-		Variant_impl::Match_Invoker<Funcs, const Ts>... ,
-		Variant_impl::Invalid_Match_Invoker_Const
+		Variant_impl::Match_Invoker<Funcs, const Ts, Return>... ,
+		Variant_impl::Invalid_Match_Invoker_Const<Return>
 	};
-	invokers[index](funcPtrs[index], &storage);
+	return invokers[index](funcPtrs[index], &storage);
 }
 
 // Takes one functor. Calls the functor with the actual type of the variant.
 template <class... Ts>
-template <class Fun>
-void Variant<Ts...>::call(Fun&& fun) {
-	using funcPtr = void(*)(Fun&&, void*);
+template <class Func>
+std::common_type_t<std::result_of_t<Func&&(Ts&)>...>
+Variant<Ts...>::apply(Func&& func)
+{
+	using ResultType = std::common_type_t<std::result_of_t<Func&&(Ts&)>...>;
+	using funcPtr = ResultType(*)(Func&&, void*);
 	static const funcPtr funcArray[] = {
-		&Variant_impl::Call_Invoker<Fun, Ts>... ,
-		&Variant_impl::Invalid_Call_Invoker<Fun, void>
+		&Variant_impl::Apply_Invoker<Func, Ts, ResultType>::go... ,
+		&Variant_impl::Invalid_Apply_Invoker<Func, void, ResultType>
 	};
-	funcArray[index](std::forward<Fun>(fun), &storage);
+	return funcArray[index](std::forward<Func>(func), &storage);
 }
-
-template <class... Ts>
-template <class Fun>
-void Variant<Ts...>::call(Fun&& fun) const {
-	using funcPtr = void(*)(Fun&&, const void*);
-	static const funcPtr funcArray[] = {
-		&Variant_impl::Call_Invoker<Fun, const Ts>... ,
-		&Variant_impl::Invalid_Call_Invoker<Fun, const void>
-	};
-	funcArray[index](std::forward<Fun>(fun), &storage);
-}
-
 template <class... Ts>
 template <class Func>
-std::common_type_t<std::result_of_t<Func&&(Ts)>...>
+std::common_type_t<std::result_of_t<Func&&(const Ts&)>...>
 Variant<Ts...>::apply(Func&& func) const
 {
-	using ResultType = std::common_type_t<std::result_of_t<Func&&(Ts)>...>;
+	using ResultType = std::common_type_t<std::result_of_t<Func&&(const Ts&)>...>;
 	using funcPtr = ResultType(*)(Func&&, const void*);
 	static const funcPtr funcArray[] = {
 		&Variant_impl::Apply_Invoker<Func, const Ts, ResultType>::go... ,
@@ -257,14 +247,14 @@ Variant<Ts...>::~Variant() {
 // Copy constructor
 template <class... Ts>
 Variant<Ts...>::Variant(const Variant<Ts...>& other) {
-	other.call(Variant_impl::Copy(&storage));
+	other.apply(Variant_impl::Copy(&storage));
 	index = other.index;
 }
 
 // Move constructor
 template <class... Ts>
 Variant<Ts...>::Variant(Variant<Ts...>&& other) {
-	other.call(Variant_impl::Move(&storage));
+	other.apply(Variant_impl::Move(&storage));
 	index = other.index;
 }
 
@@ -276,7 +266,7 @@ Variant<Ts...>::operator=(const Variant<Ts...>& rhs)
 	// A bit naive, but...
 	if (this != &rhs) {
 		destroySelf();
-		rhs.call(Variant_impl::Copy(&storage));
+		rhs.apply(Variant_impl::Copy(&storage));
 		index = rhs.index;
 	}
 	return *this;

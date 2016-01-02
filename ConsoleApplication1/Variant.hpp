@@ -37,12 +37,6 @@ public:
 	template <size_t I>
 	Variant(Pos<I> tag, TypeAt<I> val);
 
-	// This factory might be easier to use than the positional constructor.
-	template <size_t I>
-	static Variant construct(TypeAt<I> item) {
-		return Variant(Pos<I>{}, std::move(item));
-	}
-
 	// Positional assignment
 	template <size_t I>
 	void assign(const TypeAt<I>& item);
@@ -60,19 +54,18 @@ public:
 
 	// Takes n functors. According to the index, calls the nth functor.
 	template <class... Funcs>
-	void match(Funcs&&... funcs);
+	auto //std::common_type_t<std::result_of_t<Funcs&&(Ts&)>...>
+		match(Funcs&&... funcs);
 	template <class... Funcs>
-	void match(Funcs&&... funcs) const;
-
-	// Takes one functor. Calls the functor with the actual type of the variant.
-	template <class Fun>
-	void call(Fun&& fun);
-	template <class Fun>
-	void call(Fun&& fun) const;
+	auto //std::common_type_t<std::result_of_t<Funcs(const Ts&)>...> // Why can't I put the return type here?
+		match(Funcs&&... funcs) const;
 
 	// Takes one functor. Calls the functor with the actual type of the variant, and returns the result.
 	template <class Func>
-	std::common_type_t<std::result_of_t<Func&&(Ts)>...>
+	std::common_type_t<std::result_of_t<Func&&(Ts&)>...>
+		apply(Func&& func);
+	template <class Func>
+	std::common_type_t<std::result_of_t<Func&&(const Ts&)>...>
 		apply(Func&& func) const;
 private:
 	// Static definitions
