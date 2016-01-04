@@ -1,298 +1,192 @@
-#include <cstdio>
-#include <deque>
-#include <list>
-#include <vector>
-#include <unordered_map>
-#include <stack>
-#include <cstdint>
-#include <stdexcept>
-#include <iostream>
-#include <fstream>
-#include <iterator>
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-template <typename Cell, size_t hint = 1>
-class DequeMemoryPolicy {
-private:
-	std::deque<Cell> Memory = std::deque<Cell>(hint);
-	size_t MemoryPointer = 0;
-protected:
-	Cell& CurrentCell() {
-		return Memory[MemoryPointer];
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory.size() <= MemoryPointer) {
-			Memory.push_back(0);
-		}
-	}
-	void Left() {
-		if (0 == MemoryPointer) {
-			Memory.push_front(0);
-		} else {
-			--MemoryPointer;
-		}
-	}
-};
+namespace Brainfuck_Cs
+{
+    interface MemoryPolicy<T>
+    {
+        T CurrentCell
+        {
+            get; set;
+        }
 
-template <typename Cell, size_t hint = 1>
-class VectorMemoryPolicy {
-private:
-	std::vector<Cell> Memory = std::vector<Cell>(hint);
-	size_t MemoryPointer = 0;
-protected:
-	Cell& CurrentCell() {
-		return Memory[MemoryPointer];
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory.size() <= MemoryPointer) {
-			Memory.push_back(0);
-		}
-	}
-	void Left() {
-		if (0 == MemoryPointer) {
-			Memory.insert(Memory.cbegin(), 0); // Rarely used but oh so ugly
-		} else {
-			--MemoryPointer;
-		}
-	}
-};
+        void Right();
+        void Left();
+    }
 
-template <typename Cell, size_t hint = 1>
-class ListMemoryPolicy {
-private:
-	std::list<Cell> Memory = std::list<Cell>(hint);
-	typename std::list<Cell>::iterator MemoryPointer = Memory.begin();
-protected:
-	Cell& CurrentCell() {
-		return *MemoryPointer;
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory.end() == MemoryPointer) {
-			Memory.push_back(0);
-			--MemoryPointer;
-		}
-	}
-	void Left() {
-		if (Memory.begin() == MemoryPointer) {
-			Memory.push_front(0);
-		}
-		--MemoryPointer;
-	}
-};
+    class BrainfuckProgram<MemPo> where MemPo: MemoryPolicy<byte>, new()
+    {
+        private Action[] Instructions;
+        private MemPo Memory = new MemPo();
+        private int ProgramCounter = 0;
 
-template <typename Cell, size_t N = 0x7FFF>
-class SafeArrayMemoryPolicy {
-private:
-	Cell Memory[N] = { 0 };
-	Cell* MemoryPointer = Memory;
-protected:
-	Cell& CurrentCell() {
-		return *MemoryPointer;
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory + N <= MemoryPointer) {
-			throw std::runtime_error("Can't move the pointer right");
-		}
-	}
-	void Left() {
-		if (Memory == MemoryPointer) {
-			throw std::runtime_error("Can't move the pointer left");
-		}
-		--MemoryPointer;
-	}
-};
+        private void Increment()
+        {
+            Memory.CurrentCell++;
+        }
+        private void Decrement()
+        {
+            Memory.CurrentCell--;
+        }
+        //private void Left()
+        //private void Right()
+        private void Print()
+        {
+            Console.Write((char)Memory.CurrentCell);
+        }
+        private void Read()
+        {
+            var c = Console.Read();
+            if (-1 != c)
+            {
+                Memory.CurrentCell = (byte)c;
+            }
+        }
+        //private void StartLoop()
+        //private void EndLoop()
 
-template <typename Cell, size_t N = 0x7FFF>
-class UnsafeArrayMemoryPolicy {
-private:
-	Cell Memory[N] = { 0 };
-	Cell* MemoryPointer = Memory;
-protected:
-	Cell& CurrentCell() {
-		return *MemoryPointer;
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-	}
-	void Left() {
-		--MemoryPointer;
-	}
-};
+        private Action[] Parse(IEnumerable<char> source)
+        {
+            List<Action> program = new List<Action>();
+            Stack<int> OpeningBrackets = new Stack<int>();
+            foreach (char c in source)
+            {
+                switch (c)
+                {
+                case '>':
+                    program.Add(Memory.Right);
+                    break;
+                case '<':
+                    program.Add(Memory.Left);
+                    break;
+                case '+':
+                    program.Add(Increment);
+                    break;
+                case '-':
+                    program.Add(Decrement);
+                    break;
+                case '.':
+                    program.Add(Print);
+                    break;
+                case ',':
+                    program.Add(Read);
+                    break;
+                case '[':
+                    OpeningBrackets.Push(program.Count);
+                    program.Add(null); // We'll fix this in the ']' case.
+                    break;
+                case ']':
+                    {
+                        var MatchingEnd = program.Count;
+                        var MatchingStart = OpeningBrackets.Pop();
 
-template <typename Cell, size_t Dummy = 0>
-class MapMemoryPolicy {
-private:
-	std::unordered_map<int, Cell> Memory;
-	int MemoryPointer = 0;
-protected:
-	Cell& CurrentCell() {
-		return Memory[MemoryPointer];
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-	}
-	void Left() {
-		--MemoryPointer;
-	}
-};
+                        // Loop end
+                        program.Add(delegate ()
+                        {
+                            if (0 != Memory.CurrentCell)
+                            {
+                                ProgramCounter = MatchingStart;
+                            }
+                        });
+                        // Loop start
+                        program[MatchingStart] = delegate ()
+                        {
+                            if (0 == Memory.CurrentCell)
+                            {
+                                ProgramCounter = MatchingEnd;
+                            }
+                        };
+                    }
+                    break;
+                default:
+                    // Ignore
+                    break;
+                }
+            }
+            if (OpeningBrackets.Count != 0)
+            {
+                throw new Exception(string.Format("Error: {0} unmatched '['(s)", OpeningBrackets.Count));
+            }
+            System.Diagnostics.Debug.Assert(program.All(a => null != a));
+            return program.ToArray();
+        }
+        public BrainfuckProgram(IEnumerable<char> source)
+        {
+            Instructions = Parse(source);
+        }
+        public void Run()
+        {
+            while (ProgramCounter < Instructions.Length)
+            {
+                Instructions[ProgramCounter]();
+                ++ProgramCounter;
+            }
+        }
+    }
 
-struct CStringSentinel {};
-bool operator!=(const char *s, CStringSentinel dummy) {
-	return 0 != *s;
-}
+    class ListMemoryPolicy<T> : MemoryPolicy<T>
+    {
+        private LinkedList<T> Memory;
+        private LinkedListNode<T> MemoryPointer;
+        public ListMemoryPolicy()
+        {
+            Memory = new LinkedList<T>(Enumerable.Repeat(default(T), 1));
+            MemoryPointer = Memory.First;
+        }
+        public T CurrentCell
+        {
+            get
+            { return MemoryPointer.Value; }
+            set
+            { MemoryPointer.Value = value; }
+        }
+        public void Right()
+        {
+            if (null == MemoryPointer.Next)
+            {
+                Memory.AddLast(default(T));
+            }
+            MemoryPointer = MemoryPointer.Next;
+        }
+        public void Left()
+        {
+            if (null == MemoryPointer.Previous)
+            {
+                Memory.AddFirst(default(T));
+            }
+            MemoryPointer = MemoryPointer.Previous;
+        }
+    }
 
-// Represents a virtual machine running Brainfuck code.
-// Warning: practically requires tail call optimization.
-class BrainfuckProgram : private UnsafeArrayMemoryPolicy<int8_t, 0xffff> {
-private:
-	// Results of parsing
-	using OpCode = void(BrainfuckProgram::*)();
-	struct Instruction {
-		OpCode op;
-		size_t jumpTarget;
-		Instruction() = default;
-		Instruction(OpCode o)
-			: op(o)
-		{
-		}
-	};
-	std::vector<Instruction> Program;
-	// Runtime state
-	size_t ProgramCounter = 0;
-	// Implementation of instructions
-#define GOTO_NEXT (this->*Program[ProgramCounter].op)();
-	void MoveLeft() {
-		Left();
-		++ProgramCounter;
-		GOTO_NEXT
-	}
-	void MoveRight() {
-		Right();
-		++ProgramCounter;
-		GOTO_NEXT
-	}
-	void Increment() {
-		CurrentCell()++;
-		++ProgramCounter;
-		GOTO_NEXT
-	}
-	void Decrement() {
-		CurrentCell()--;
-		++ProgramCounter;
-		GOTO_NEXT
-	}
-	void Print() {
-		std::putchar(CurrentCell());
-		++ProgramCounter;
-		GOTO_NEXT
-	}
-	void Read() {
-		const auto c = std::getchar();
-		if (EOF != c) {
-			CurrentCell() = c;
-		}
-		++ProgramCounter;
-		GOTO_NEXT
-	}
-	void StartLoop() {
-		if (0 == CurrentCell()) {
-			ProgramCounter = 1 + Program[ProgramCounter].jumpTarget;
-			GOTO_NEXT
-		} else {
-			++ProgramCounter;
-			GOTO_NEXT
-		}
-	}
-	void EndLoop() {
-		if (0 != CurrentCell()) {
-			ProgramCounter = 1 + Program[ProgramCounter].jumpTarget;
-			GOTO_NEXT
-		} else {
-			++ProgramCounter;
-			GOTO_NEXT
-		}
-	}
-	void ProgramEnd() {
-	}
-#undef GOTO_NEXT
-public:
-	template <class InputCharIterator, class Sentinel>
-	BrainfuckProgram(InputCharIterator first, Sentinel last) {
-		std::stack<size_t, std::vector<size_t> > OpeningBrackets;
-		for (size_t index = 0U; first != last; ++index, ++first) {
-			const char c = *first;
-			switch (c) {
-			case '>':
-				Program.push_back(&BrainfuckProgram::MoveRight);
-				break;
-			case '<':
-				Program.push_back(&BrainfuckProgram::MoveLeft);
-				break;
-			case '+':
-				Program.push_back(&BrainfuckProgram::Increment);
-				break;
-			case '-':
-				Program.push_back(&BrainfuckProgram::Decrement);
-				break;
-			case '.':
-				Program.push_back(&BrainfuckProgram::Print);
-				break;
-			case ',':
-				Program.push_back(&BrainfuckProgram::Read);
-				break;
-			case '[':
-				OpeningBrackets.push(Program.size());
-				Program.push_back(&BrainfuckProgram::StartLoop);
-				break;
-			case ']':
-			{
-				auto MatchingEnd = Program.size();
-				if (OpeningBrackets.empty()) {
-					char msg[40];
-					snprintf(msg, 40, "Error: Unmatched ] at %zu", index);
-					throw std::runtime_error(msg);
-				}
-				auto MatchingStart = OpeningBrackets.top();
-				OpeningBrackets.pop();
-				Program.push_back(&BrainfuckProgram::EndLoop);
-				Program[MatchingEnd].jumpTarget = MatchingStart;
-				Program[MatchingStart].jumpTarget = MatchingEnd;
-			}
-			break;
-			default:
-				// Ignore
-				break;
-			}
-		}
-		if (!OpeningBrackets.empty()) {
-			char msg[40];
-			snprintf(msg, 40, "Error: %zu unmatched '['(s)", OpeningBrackets.size());
-			throw std::runtime_error(msg);
-		}
-		Program.push_back(&BrainfuckProgram::ProgramEnd);
-	}
-	BrainfuckProgram(const char* source) :
-		BrainfuckProgram(source, CStringSentinel{})
-	{
-	}
+    class UnsafeArrayMemoryPolicy<T> : MemoryPolicy<T>
+    {
+        private T[] Memory = new T[0x7fff];
+        private int Index = 0;
+        public T CurrentCell
+        {
+            get
+            { return Memory[Index]; }
+            set
+            { Memory[Index] = value; }
+        }
+        public void Right()
+        {
+            ++Index;
+        }
+        public void Left()
+        {
+            --Index;
+        }
+    }
 
-	void Run() {
-		ProgramCounter = 0;
-		(this->*Program[ProgramCounter].op)();
-	}
-};
-
-namespace sources {
-	const char mandelbrot[] = R"==(
+    class Program
+    {
+        static class Sources
+        {
+            public const string mandelbrot = @"
       A mandelbrot set fractal viewer in brainf*** written by Erik Bosman
 +++++++++++++[->++>>>+++++>++>+<<<<<<]>>>>>++++++>--->>>>>>>>>>+++++++++++++++[[
 >>>>>>>>>]+[<<<<<<<<<]>>>>>>>>>-]+[>>>>>>>>[-]>]<<<<<<<<<[<<<<<<<<<]>>>>>>>>[-]+
@@ -438,21 +332,16 @@ namespace sources {
 >>>]>[-]+<]]+>[-<[>>>>>>>>>]<<<<<<<<]>>>>>>>>]<<<<<<<<<[<<<<<<<<<]>>>>[-]<<<++++
 +[-[->>>>>>>>>+<<<<<<<<<]>>>>>>>>>]>>>>>->>>>>>>>>>>>>>>>>>>>>>>>>>>-<<<<<<[<<<<
 <<<<<]]>>>]
+";
+        }
 
-)==";
-}
-
-int main(int argc, char** argv) {
-	BrainfuckProgram bf = ([&]() -> BrainfuckProgram {
-		if (argc > 1) {
-			using it = std::istreambuf_iterator<char>;
-			std::ifstream f(argv[1]);
-			return BrainfuckProgram(it(f), it{});
-		} else {
-			puts("Running demo: Mandelbrot");
-			return BrainfuckProgram(sources::mandelbrot);
-		}
-	})();
-	bf.Run();
-	puts("Finish!\n");
+        static void Main(string[] args)
+        {
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var bf = new BrainfuckProgram<UnsafeArrayMemoryPolicy<byte>>(Sources.mandelbrot);
+            bf.Run();
+            timer.Stop();
+            Console.WriteLine("Finish! Time:{0}\n", timer.Elapsed);
+        }
+    }
 }

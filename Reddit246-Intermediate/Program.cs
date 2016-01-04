@@ -1,4 +1,4 @@
-﻿//https://www.reddit.com/r/dailyprogrammer/comments/3xye4g/20151223_challenge_246_intermediate_letter_splits/
+﻿// https://www.reddit.com/r/dailyprogrammer/comments/3xye4g/20151223_challenge_246_intermediate_letter_splits/
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -89,7 +89,7 @@ namespace Reddit246_Intermediate
 
         static bool ValidWords(string s)
         {
-            if (string.IsNullOrWhiteSpace(s))
+            /*if (string.IsNullOrWhiteSpace(s))
             {
                 return true;
             }
@@ -100,24 +100,8 @@ namespace Reddit246_Intermediate
                     return true;
                 }
             }
-            return false;
-        }
-
-        static Func<T, TR> Memoize<T, TR>(Func<T, TR> f)
-        {
-            var memo = new Dictionary<T, TR>();
-            return delegate (T arg)
-            {
-                TR ans = default(TR);
-                if (memo.TryGetValue(arg, out ans))
-                {
-                    return ans;
-                }
-                else
-                {
-                    return memo[arg] = f(arg);
-                }
-            };
+            return false;*/
+            return string.IsNullOrWhiteSpace(s) || Matcher.Find(s).Any(len => ValidWords(s.Substring(len)));
         }
 
         static void Main(string[] args)

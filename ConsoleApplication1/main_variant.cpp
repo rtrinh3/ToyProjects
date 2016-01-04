@@ -47,6 +47,7 @@ int main() {
 	Sqrt s;
 	Variant<int, float> foo(Pos<0>{}, 10);
 	auto bar = foo.apply(s);
+	PrintType<decltype(bar)>();
 	foo.match(
 		[](int) {puts("int"); },
 		[](float) {puts("float"); }
