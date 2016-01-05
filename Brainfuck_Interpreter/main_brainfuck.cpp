@@ -157,8 +157,8 @@ private:
 	// Results of parsing
 	using OpCode = void(BrainfuckProgram::*)();
 	struct Instruction {
-		OpCode op;
-		size_t jumpTarget;
+		OpCode op = nullptr;
+		const Instruction* jumpTarget = nullptr;
 		Instruction() = default;
 		Instruction(OpCode o)
 			: op(o)
@@ -167,33 +167,35 @@ private:
 	};
 	std::vector<Instruction> Program;
 	// Runtime state
-	size_t ProgramCounter = 0;
+	const Instruction* ProgramCounter;
 	// Implementation of instructions
-#define GOTO_NEXT (this->*Program[ProgramCounter].op)();
+	inline void GotoNext() {
+		(this->*ProgramCounter->op)();
+	}
 	void MoveLeft() {
 		Left();
 		++ProgramCounter;
-		GOTO_NEXT
+		GotoNext();
 	}
 	void MoveRight() {
 		Right();
 		++ProgramCounter;
-		GOTO_NEXT
+		GotoNext();
 	}
 	void Increment() {
 		CurrentCell()++;
 		++ProgramCounter;
-		GOTO_NEXT
+		GotoNext();
 	}
 	void Decrement() {
 		CurrentCell()--;
 		++ProgramCounter;
-		GOTO_NEXT
+		GotoNext();
 	}
 	void Print() {
 		std::putchar(CurrentCell());
 		++ProgramCounter;
-		GOTO_NEXT
+		GotoNext();
 	}
 	void Read() {
 		const auto c = std::getchar();
@@ -201,33 +203,33 @@ private:
 			CurrentCell() = c;
 		}
 		++ProgramCounter;
-		GOTO_NEXT
+		GotoNext();
 	}
 	void StartLoop() {
 		if (0 == CurrentCell()) {
-			ProgramCounter = 1 + Program[ProgramCounter].jumpTarget;
-			GOTO_NEXT
+			ProgramCounter = 1 + ProgramCounter->jumpTarget;
+			GotoNext();
 		} else {
 			++ProgramCounter;
-			GOTO_NEXT
+			GotoNext();
 		}
 	}
 	void EndLoop() {
 		if (0 != CurrentCell()) {
-			ProgramCounter = 1 + Program[ProgramCounter].jumpTarget;
-			GOTO_NEXT
+			ProgramCounter = 1 + ProgramCounter->jumpTarget;
+			GotoNext();
 		} else {
 			++ProgramCounter;
-			GOTO_NEXT
+			GotoNext();
 		}
 	}
 	void ProgramEnd() {
 	}
-#undef GOTO_NEXT
 public:
 	template <class InputCharIterator, class Sentinel>
 	BrainfuckProgram(InputCharIterator first, Sentinel last) {
 		std::stack<size_t, std::vector<size_t> > OpeningBrackets;
+		std::vector<std::pair<size_t, size_t> > Loops;
 		for (size_t index = 0U; first != last; ++index, ++first) {
 			const char c = *first;
 			switch (c) {
@@ -264,8 +266,7 @@ public:
 				auto MatchingStart = OpeningBrackets.top();
 				OpeningBrackets.pop();
 				Program.push_back(&BrainfuckProgram::EndLoop);
-				Program[MatchingEnd].jumpTarget = MatchingStart;
-				Program[MatchingStart].jumpTarget = MatchingEnd;
+				Loops.push_back({ MatchingStart, MatchingEnd });
 			}
 			break;
 			default:
@@ -279,15 +280,30 @@ public:
 			throw std::runtime_error(msg);
 		}
 		Program.push_back(&BrainfuckProgram::ProgramEnd);
+		// Assign the loops, now that the vector is complete
+		for (auto&& loop : Loops) {
+			Program[loop.first].jumpTarget = &Program[loop.second];
+			Program[loop.second].jumpTarget = &Program[loop.first];
+		}
 	}
 	BrainfuckProgram(const char* source) :
 		BrainfuckProgram(source, CStringSentinel{})
 	{
 	}
+	BrainfuckProgram(const BrainfuckProgram& that) : 
+		Program(that.Program)
+	{
+		for (size_t i = 0; i < Program.size(); ++i) {
+			auto&& thatJump = that.Program[i].jumpTarget;
+			if (thatJump) {
+				Program[i].jumpTarget = &Program[0] + (thatJump - &that.Program[0]);
+			}
+		}
+	}
 
 	void Run() {
-		ProgramCounter = 0;
-		(this->*Program[ProgramCounter].op)();
+		ProgramCounter = &Program[0];
+		GotoNext();
 	}
 };
 
