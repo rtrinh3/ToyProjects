@@ -1,149 +1,11 @@
 #include <cstdio>
-#include <deque>
-#include <list>
-#include <vector>
-#include <unordered_map>
+#include "MemoryPolicies.hpp"
 #include <stack>
 #include <cstdint>
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <iterator>
-
-template <typename Cell, size_t hint = 1>
-class DequeMemoryPolicy {
-private:
-	std::deque<Cell> Memory = std::deque<Cell>(hint);
-	size_t MemoryPointer = 0;
-protected:
-	Cell& CurrentCell() {
-		return Memory[MemoryPointer];
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory.size() <= MemoryPointer) {
-			Memory.push_back(0);
-		}
-	}
-	void Left() {
-		if (0 == MemoryPointer) {
-			Memory.push_front(0);
-		} else {
-			--MemoryPointer;
-		}
-	}
-};
-
-template <typename Cell, size_t hint = 1>
-class VectorMemoryPolicy {
-private:
-	std::vector<Cell> Memory = std::vector<Cell>(hint);
-	size_t MemoryPointer = 0;
-protected:
-	Cell& CurrentCell() {
-		return Memory[MemoryPointer];
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory.size() <= MemoryPointer) {
-			Memory.push_back(0);
-		}
-	}
-	void Left() {
-		if (0 == MemoryPointer) {
-			Memory.insert(Memory.cbegin(), 0); // Rarely used but oh so ugly
-		} else {
-			--MemoryPointer;
-		}
-	}
-};
-
-template <typename Cell, size_t hint = 1>
-class ListMemoryPolicy {
-private:
-	std::list<Cell> Memory = std::list<Cell>(hint);
-	typename std::list<Cell>::iterator MemoryPointer = Memory.begin();
-protected:
-	Cell& CurrentCell() {
-		return *MemoryPointer;
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory.end() == MemoryPointer) {
-			Memory.push_back(0);
-			--MemoryPointer;
-		}
-	}
-	void Left() {
-		if (Memory.begin() == MemoryPointer) {
-			Memory.push_front(0);
-		}
-		--MemoryPointer;
-	}
-};
-
-template <typename Cell, size_t N = 0x7FFF>
-class SafeArrayMemoryPolicy {
-private:
-	Cell Memory[N] = { 0 };
-	Cell* MemoryPointer = Memory;
-protected:
-	Cell& CurrentCell() {
-		return *MemoryPointer;
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-		if (Memory + N <= MemoryPointer) {
-			throw std::runtime_error("Can't move the pointer right");
-		}
-	}
-	void Left() {
-		if (Memory == MemoryPointer) {
-			throw std::runtime_error("Can't move the pointer left");
-		}
-		--MemoryPointer;
-	}
-};
-
-template <typename Cell, size_t N = 0x7FFF>
-class UnsafeArrayMemoryPolicy {
-private:
-	Cell Memory[N] = { 0 };
-	Cell* MemoryPointer = Memory;
-protected:
-	Cell& CurrentCell() {
-		return *MemoryPointer;
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-	}
-	void Left() {
-		--MemoryPointer;
-	}
-};
-
-template <typename Cell, size_t Dummy = 0>
-class MapMemoryPolicy {
-private:
-	std::unordered_map<int, Cell> Memory;
-	int MemoryPointer = 0;
-protected:
-	Cell& CurrentCell() {
-		return Memory[MemoryPointer];
-	}
-public:
-	void Right() {
-		++MemoryPointer;
-	}
-	void Left() {
-		--MemoryPointer;
-	}
-};
 
 struct CStringSentinel {};
 bool operator!=(const char *s, CStringSentinel dummy) {
@@ -156,9 +18,9 @@ class BrainfuckProgram : private UnsafeArrayMemoryPolicy<int8_t, 0xffff> {
 private:
 	// Results of parsing
 	using OpCode = void(BrainfuckProgram::*)();
-	struct Instruction {
-		OpCode op = nullptr;
-		const Instruction* jumpTarget = nullptr;
+	union Instruction {
+		OpCode op;
+		const Instruction* jumpTarget;
 		Instruction() = default;
 		Instruction(OpCode o)
 			: op(o)
@@ -207,19 +69,19 @@ private:
 	}
 	void StartLoop() {
 		if (0 == CurrentCell()) {
-			ProgramCounter = 1 + ProgramCounter->jumpTarget;
+			ProgramCounter = (ProgramCounter + 1)->jumpTarget;
 			GotoNext();
 		} else {
-			++ProgramCounter;
+			ProgramCounter += 2;
 			GotoNext();
 		}
 	}
 	void EndLoop() {
 		if (0 != CurrentCell()) {
-			ProgramCounter = 1 + ProgramCounter->jumpTarget;
+			ProgramCounter = (ProgramCounter + 1)->jumpTarget;
 			GotoNext();
 		} else {
-			++ProgramCounter;
+			ProgramCounter += 2;
 			GotoNext();
 		}
 	}
@@ -254,6 +116,7 @@ public:
 			case '[':
 				OpeningBrackets.push(Program.size());
 				Program.push_back(&BrainfuckProgram::StartLoop);
+				Program.push_back({});
 				break;
 			case ']':
 			{
@@ -266,6 +129,7 @@ public:
 				auto MatchingStart = OpeningBrackets.top();
 				OpeningBrackets.pop();
 				Program.push_back(&BrainfuckProgram::EndLoop);
+				Program.push_back({});
 				Loops.push_back({ MatchingStart, MatchingEnd });
 			}
 			break;
@@ -282,8 +146,8 @@ public:
 		Program.push_back(&BrainfuckProgram::ProgramEnd);
 		// Assign the loops, now that the vector is complete
 		for (auto&& loop : Loops) {
-			Program[loop.first].jumpTarget = &Program[loop.second];
-			Program[loop.second].jumpTarget = &Program[loop.first];
+			Program[loop.first + 1].jumpTarget = &Program[loop.second] + 2;
+			Program[loop.second + 1].jumpTarget = &Program[loop.first] + 2;
 		}
 	}
 	BrainfuckProgram(const char* source) :
