@@ -57,38 +57,12 @@ public:
 	}
 
 	template <typename Fun>
-	Result<std::result_of_t<Fun&&(const T&)> >
-		Map(Fun&& func) const&
-	{
-		typedef Result<std::result_of_t<Fun&&(const T&)> > Return;
-		return contents.match(
-			[&](std::exception_ptr e) -> Return {
-				return Return::build_err(e);
-			},
-			[&](const T& x) -> Return {
-				return Attempt([&] {
-					return std::forward<Fun>(func)(x);
-				});
-			}
-		);
-	}
+	Result<std::result_of_t<Fun && (const T&)> >
+		Map(Fun&& func) const&;
 
 	template <typename Fun>
-	Result<std::result_of_t<Fun&&(T&&)> >
-		Map(Fun&& func) &&
-	{
-		typedef Result<std::result_of_t<Fun&&(T&&)> > Return;
-		return contents.match(
-			[&](std::exception_ptr e) -> Return {
-				return Return::build_err(e);
-			},
-			[&](T& x) -> Return {
-				return Attempt([&] {
-					return std::forward<Fun>(func)(std::move(x));
-				});
-			}
-		);
-	}
+	Result<std::result_of_t<Fun && (T&&)> >
+		Map(Fun&& func) && ;
 
 	const T& Unwrap() const& {
 		return contents.match(
@@ -115,4 +89,40 @@ Attempt(Fun&& func)
 	} catch (...) {
 		return Return::build_err(std::current_exception());
 	}
+}
+
+template <typename T>
+template <typename Fun>
+Result<std::result_of_t<Fun && (const T&)> >
+Result<T>::Map(Fun&& func) const&
+{
+	typedef Result<std::result_of_t<Fun && (const T&)> > Return;
+	return contents.match(
+		[&](std::exception_ptr e) -> Return {
+			return Return::build_err(e);
+		},
+		[&](const T& x) -> Return {
+			return Attempt([&] {
+				return std::forward<Fun>(func)(x);
+			});
+		}
+	);
+}
+
+template <typename T>
+template <typename Fun>
+Result<std::result_of_t<Fun && (T&&)> >
+Result<T>::Map(Fun&& func) &&
+{
+	typedef Result<std::result_of_t<Fun && (T&&)> > Return;
+	return contents.match(
+		[&](std::exception_ptr e) -> Return {
+			return Return::build_err(e);
+		},
+		[&](T& x) -> Return {
+			return Attempt([&] {
+				return std::forward<Fun>(func)(std::move(x));
+			});
+		}
+	);
 }
